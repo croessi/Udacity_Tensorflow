@@ -1,0 +1,22 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/vscode/Udacity_Tensorflow/src/main.cpp
+stdio.h
+-
+stdlib.h
+-
+tensorflow/c/c_api.h
+-
+vector
+-
+iostream
+-
+fstream
+-
+
