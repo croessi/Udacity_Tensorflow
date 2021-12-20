@@ -274,12 +274,6 @@ CPACK_SOURCE_ZIP:BOOL=OFF
 //The directory containing a CMake configuration file for OpenCV.
 OpenCV_DIR:PATH=/usr/local/lib/cmake/opencv4
 
-//The directory containing a CMake configuration file for TensorFlow.
-TensorFlow_DIR:PATH=TensorFlow_DIR-NOTFOUND
-
-//The directory containing a CMake configuration file for Tensorflow.
-Tensorflow_DIR:PATH=Tensorflow_DIR-NOTFOUND
-
 //Value Computed by CMake
 Udacity-Tensorflow_BINARY_DIR:STATIC=/home/vscode/Udacity_Tensorflow/build
 
