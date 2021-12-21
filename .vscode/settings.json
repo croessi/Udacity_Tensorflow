@@ -51,6 +51,7 @@
         "cstring": "cpp",
         "ctime": "cpp",
         "ratio": "cpp",
-        "mutex": "cpp"
+        "mutex": "cpp",
+        "future": "cpp"
     }
 }

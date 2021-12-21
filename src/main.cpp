@@ -46,42 +46,60 @@ class VideoReader
 {
 private:
   const string _filename;
-  VideoCapture _cap;
+  unique_ptr<VideoCapture> _cap;
   promise<void> _prmsFrameRead;
   future<void> _ftrFrameRead;
   vector<Mat> _frameBuffer;
   mutex _mut;
 
-  void readNextFrame()
+  bool _isokay;
+
+public:
+  //this thread allways tries to fill the framebuffe with 5 frames
+  void FrameReadLoop()
   {
-    //read frame
-    Mat f;
-    _cap >> f;
+    unique_lock<mutex> lck(_mut);
+    //create cpature instance
+    if (!_cap)
+      _cap = make_unique<VideoCapture>(_filename);
 
-    /// If the frame is empty,errormessage
-    if (f.empty())
-      cout << "Error whikle reading Frame";
+    while (true)
+    {
 
-    //create unique ptr and push into frame buffer
-    unique_ptr<Mat> frame = make_unique<Mat>(move(f));
+      //only cpature mor frames if buffer runs low
+      if (_frameBuffer.size() < 5)
+      {
+        lck.unlock();
 
-    const lock_guard<mutex> lock(_mut);
-    _frameBuffer.emplace(_frameBuffer.begin(), (move(frame)));
+        Mat f;
+        *_cap >> f;
 
-    _prmsFrameRead.set_value();
+        /// If the frame is empty,errormessage
+        if (f.empty())
+          cout << "Error while reading Frame";
+
+        lck.lock();
+        _frameBuffer.emplace(_frameBuffer.begin(), move(f));
+      }
+
+      lck.unlock();
+
+      //sleep
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+      lck.lock();
+    }
   }
 
 public:
-  VideoReader(string filename) : _filename(filename)
-  {
-    VideoCapture _cap(filename);
-  };
+  VideoReader(string filename) : _filename(filename), _cap(nullptr){};
   ~VideoReader() { _cap.release(); };
 
   string getFilename();
 
   unique_ptr<Mat> getNextFrame()
   {
+    /*
     //wait for the capture thread to return the image ( if thread already runing)
     if (_ftrFrameRead.valid())
       _ftrFrameRead.wait();
@@ -90,17 +108,36 @@ public:
     _ftrFrameRead = _prmsFrameRead.get_future();
 
     //start new asynchronous thread to get next frame
-    thread readNextF(&VideoReader::readNextFrame,this);
+    thread readNextF(&VideoReader::readNextFrame, this);
 
-    //get firt element on framebuffer and remove first
-    const lock_guard<mutex> lock(_mut);
-    unique_ptr<Mat> frame = make_unique<Mat>(move(_frameBuffer.back()));
-    _frameBuffer.pop_back();
+    //thread has alread put s.th to buffer
+    */
 
-    return move(frame);
+    while (true)
+    {
+
+      unique_lock<mutex> lck(_mut);
+
+      if (_frameBuffer.size() > 0)
+      {
+        //get last element on framebuffer
+        unique_ptr<Mat> frame = make_unique<Mat>(move(_frameBuffer.back()));
+        _frameBuffer.pop_back();
+        lck.unlock();
+        return move(frame);
+      }
+
+      if (lck.owns_lock())
+        lck.unlock();
+      //wait for 1 msec before look again into the buffer
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
+    //return empty MAT object
+    return {};
   };
 
-  bool isOkay() { return _cap.isOpened(); }
+  bool isOkay() { return _isokay; }
 };
 
 int main()
@@ -108,10 +145,37 @@ int main()
   //load labels
   map<int, string> DetClasses = ReadClasses2Labels("../mscoco_label_map.pbtxt");
 
+  /*
+  VideoCapture cap("../output.mp4");
+  if (!cap.isOpened())
+  {
+
+    cout << "Error opening chaplin video stream or file" << endl;
+
+    return -1;
+  }
+
+  //read frame
+  Mat f;
+  cap >> f;
+*/
+
   //create instance of video reader
-  VideoReader Reader("../output.mp4");
-  if (!Reader.isOkay())
-  return -1;
+  VideoReader Reader("/home/vscode/Udacity_Tensorflow/output.mp4");
+
+  promise<void> prmsVideoOpen;
+  future<void> ftrVideoOpen = prmsVideoOpen.get_future();
+
+  thread readFrameLoopThread(&VideoReader::FrameReadLoop, &Reader);
+  std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+  //wait until vide is open
+  //ftrVideoOpen.get();
+
+  //get first frame
+  unique_ptr<Mat> frame(Reader.getNextFrame());
+
+  frame = Reader.getNextFrame();
 
   //Load CNN
   //********* Read model
@@ -187,7 +251,7 @@ int main()
   //resize(img_o, img, Size(img_o.size[0] / scaling_factor, img_o.size[1] / scaling_factor));
 
   //get first frame
-  unique_ptr<Mat> frame(Reader.getNextFrame());
+  //unique_ptr<Mat> frame (Reader.getNextFrame());
 
   int ndims = 4;
 
@@ -229,7 +293,7 @@ int main()
     }
 
     //get next frame
-    unique_ptr<Mat> frame(Reader.getNextFrame());
+    frame = Reader.getNextFrame();
   }
 
   // When everything done, release the video capture object
