@@ -145,6 +145,33 @@ Udacity-Tensorflow/fast:
 	$(MAKE) -f CMakeFiles/Udacity-Tensorflow.dir/build.make CMakeFiles/Udacity-Tensorflow.dir/build
 .PHONY : Udacity-Tensorflow/fast
 
+src/TensorProcessor.o: src/TensorProcessor.cpp.o
+
+.PHONY : src/TensorProcessor.o
+
+# target to build an object file
+src/TensorProcessor.cpp.o:
+	$(MAKE) -f CMakeFiles/Udacity-Tensorflow.dir/build.make CMakeFiles/Udacity-Tensorflow.dir/src/TensorProcessor.cpp.o
+.PHONY : src/TensorProcessor.cpp.o
+
+src/TensorProcessor.i: src/TensorProcessor.cpp.i
+
+.PHONY : src/TensorProcessor.i
+
+# target to preprocess a source file
+src/TensorProcessor.cpp.i:
+	$(MAKE) -f CMakeFiles/Udacity-Tensorflow.dir/build.make CMakeFiles/Udacity-Tensorflow.dir/src/TensorProcessor.cpp.i
+.PHONY : src/TensorProcessor.cpp.i
+
+src/TensorProcessor.s: src/TensorProcessor.cpp.s
+
+.PHONY : src/TensorProcessor.s
+
+# target to generate assembly for a file
+src/TensorProcessor.cpp.s:
+	$(MAKE) -f CMakeFiles/Udacity-Tensorflow.dir/build.make CMakeFiles/Udacity-Tensorflow.dir/src/TensorProcessor.cpp.s
+.PHONY : src/TensorProcessor.cpp.s
+
 src/main.o: src/main.cpp.o
 
 .PHONY : src/main.o
@@ -183,6 +210,9 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... package"
 	@echo "... Udacity-Tensorflow"
+	@echo "... src/TensorProcessor.o"
+	@echo "... src/TensorProcessor.i"
+	@echo "... src/TensorProcessor.s"
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"

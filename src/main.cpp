@@ -1,8 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
+/*
 #include <tensorflow/c/c_api.h>
 #include <vector>
 #include <future>
+
+#include <deque>
+*/
+
 #include <thread>
 
 #include <opencv2/core.hpp>
@@ -12,43 +17,18 @@
 
 #include <iostream>
 
-#include "ReadClassesToLabels.h"
+#include "TensorProcessor.h"
 
 using namespace cv;
 using namespace std;
-
-void NoOpDeallocator(void *data, size_t a, void *b) {}
-
-struct Detection
-{
-  float score;
-  int detclass;
-};
-
-struct DetectionResult
-{
-  unique_ptr<Mat> Image;
-  int num_detections;
-  vector<Detection> Detections;
-};
-
-class TensorProcessor
-{
-private:
-public:
-  TensorProcessor();
-  ~TensorProcessor();
-
-  bool NewDetectionAvailable;
-};
 
 class VideoReader
 {
 private:
   const string _filename;
   unique_ptr<VideoCapture> _cap;
-  promise<void> _prmsFrameRead;
-  future<void> _ftrFrameRead;
+  //promise<void> _prmsFrameRead;
+  //future<void> _ftrFrameRead;
   vector<Mat> _frameBuffer;
   mutex _mut;
 
@@ -142,93 +122,60 @@ public:
 
 int main()
 {
-  //load labels
-  map<int, string> DetClasses = ReadClasses2Labels("../mscoco_label_map.pbtxt");
-
-  /*
-  VideoCapture cap("../output.mp4");
-  if (!cap.isOpened())
-  {
-
-    cout << "Error opening chaplin video stream or file" << endl;
-
-    return -1;
-  }
-
-  //read frame
-  Mat f;
-  cap >> f;
-*/
 
   //create instance of video reader
   VideoReader Reader("/home/vscode/Udacity_Tensorflow/output.mp4");
 
-  promise<void> prmsVideoOpen;
-  future<void> ftrVideoOpen = prmsVideoOpen.get_future();
+  //promise<void> prmsVideoOpen;
+  //future<void> ftrVideoOpen = prmsVideoOpen.get_future();
 
   thread readFrameLoopThread(&VideoReader::FrameReadLoop, &Reader);
-  std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  //give thread som tme to instanciate
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
-  //wait until vide is open
-  //ftrVideoOpen.get();
+  //load Model
+  TensorProcessorClass TensorProcessor("../ssd_mobilenet_v2", 1, "serving_default_input_tensor", 8, "StatefulPartitionedCall");
 
-  //get first frame
-  unique_ptr<Mat> frame(Reader.getNextFrame());
+  //start detector thread
+  thread detectorThread(&TensorProcessorClass::SessionRunLoop, &TensorProcessor);
+  //give thread som tme to instanciate
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
-  frame = Reader.getNextFrame();
+  //unique_ptr<DetectionResultClass> DetectionResult = make_unique<DetectionResultClass>(Reader.getNextFrame());
 
-  //Load CNN
-  //********* Read model
-  TF_Graph *Graph = TF_NewGraph();
-  TF_Status *Status = TF_NewStatus();
+  bool init = true;
+  int c1 = 0;
 
-  TF_SessionOptions *SessionOpts = TF_NewSessionOptions();
-  TF_Buffer *RunOpts = NULL;
-
-  const char *saved_model_dir = "../ssd_mobilenet_v2"; // Path of the model
-  const char *tags = "serve";                          // default model serving tag; can change in future
-  int ntags = 1;
-
-  TF_Session *Session = TF_LoadSessionFromSavedModel(SessionOpts, RunOpts, saved_model_dir, &tags, ntags, Graph, NULL, Status);
-  if (TF_GetCode(Status) == TF_OK)
+  while (true)
   {
-    printf("TF_LoadSessionFromSavedModel OK\n");
+    unique_ptr<Mat> frame ( move(Reader.getNextFrame()));
+    //check if we have new images or if we are in the first run
+    if (TensorProcessor.output_queue.GetSize() > 0 || init)
+    {
+
+      //move frame into detection result
+      DetectionResultClass SessionInput(move(frame));
+
+      cout << "Frame Number" << c1++ << " is send to Detector \n";
+      //move detection result into que to be processed by tensor flow
+      TensorProcessor.input_queue.send(move(SessionInput));
+
+      //skip in init run
+      if (!init)
+      {
+        //get Image from detection and display
+        DetectionResultClass SessionOutput(TensorProcessor.output_queue.receive());
+        cout << "Detection Score of id: " << SessionOutput.GetDetections()[0].score << " " << TensorProcessor.GetStringFromClass(SessionOutput.GetDetections()[0].detclass) << "\n";
+      }
+
+      init = false;
+    }
+    else
+    {
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      cout << "Frame Number " << c1++ << " is displayed \n";
+    }
   }
-  else
-  {
-    printf("%s", TF_Message(Status));
-  }
-
-  //****** Get input tensor
-  int NumInputs = 1;
-  TF_Output *Input = (TF_Output *)malloc(sizeof(TF_Output) * NumInputs);
-
-  TF_Output t0 = {TF_GraphOperationByName(Graph, "serving_default_input_tensor"), 0};
-  if (t0.oper == NULL)
-    printf("ERROR: Failed TF_GraphOperationByName serving_default_input_tensor\n");
-  else
-    printf("Input Tensor created and assigned\n");
-
-  Input[0] = t0;
-
-  //********* Get Output tensor
-  int NumOutputs = 8;
-  TF_Output *Output = (TF_Output *)malloc(sizeof(TF_Output) * NumOutputs);
-
-  for (int i = 0; i < NumOutputs; i++)
-  {
-    TF_Output t2 = {TF_GraphOperationByName(Graph, "StatefulPartitionedCall"), i};
-    if (t2.oper == NULL)
-      printf("ERROR: Failed TF_GraphOperationByName StatefulPartitionedCall\n");
-
-    Output[i] = t2;
-  }
-
-  printf("Output Tensors created and assigned\n");
-
-  //********* Allocate data for inputs & outputs
-  TF_Tensor **InputValues = (TF_Tensor **)malloc(sizeof(TF_Tensor *) * NumInputs);
-  TF_Tensor **OutputValues = (TF_Tensor **)malloc(sizeof(TF_Tensor *) * NumOutputs);
 
   /*
   std::string image_path = samples::findFile("../bus.jpg");
@@ -253,44 +200,13 @@ int main()
   //get first frame
   //unique_ptr<Mat> frame (Reader.getNextFrame());
 
-  int ndims = 4;
-
-  int64_t dims[] = {1, frame->size[0], frame->size[1], 3};
-  int ndata = dims[0] * dims[1] * dims[2] * dims[3];
+  //get first frame
+  unique_ptr<Mat> frame(Reader.getNextFrame());
 
   while (true)
   {
 
     //unique_ptr<TF_Tensor> int_tensor = make_unique<TF_Tensor>(TF_NewTensor(TF_UINT8, dims, ndims, frame.data, ndata, &NoOpDeallocator, 0));
-
-    TF_Tensor *int_tensor = TF_NewTensor(TF_UINT8, dims, ndims, frame->data, ndata, &NoOpDeallocator, 0);
-
-    if (int_tensor != NULL)
-      printf("TF_NewTensor is OK\n");
-    else
-      printf("ERROR: Failed TF_NewTensor\n");
-
-    InputValues[0] = int_tensor;
-
-    //Run the Session
-    TF_SessionRun(Session, NULL, Input, InputValues, NumInputs, Output, OutputValues, NumOutputs, NULL, 0, NULL, Status);
-
-    if (TF_GetCode(Status) == TF_OK)
-      printf("Session rn through\n");
-    else
-      printf("%s", TF_Message(Status));
-
-    //get num of detections
-    int num_detections = *(float *)(TF_TensorData(OutputValues[5]));
-
-    //display result
-    for (int i = 0; i < num_detections; i++)
-    {
-      float score = ((float *)TF_TensorData(OutputValues[4]))[i];
-      int detclass = ((float *)TF_TensorData(OutputValues[2]))[i];
-
-      cout << "Detection Score " << i << ": " << score << " " << DetClasses[detclass] << "\n";
-    }
 
     //get next frame
     frame = Reader.getNextFrame();
@@ -300,10 +216,6 @@ int main()
   destroyAllWindows();
 
   // //Free memory
-  TF_DeleteGraph(Graph);
-  TF_DeleteSession(Session, Status);
-  TF_DeleteSessionOptions(SessionOpts);
-  TF_DeleteStatus(Status);
 
   return 0;
 }
