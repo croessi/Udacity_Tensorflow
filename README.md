@@ -35,7 +35,11 @@ sudo apt libgstreamer1.0-dev
 Opencv from Package Manager:
 sudo apt install libopencv-dev
 
-### OpenCV with FFMPEG
+###  Udacity Tensorflow
+ git clone https://github.com/croessi/Udacity_Tensorflow
+ mkdir build
+ 
+ cmake .
 
 # Know Issues
 - Itried to replace the pointers and mallocs from the tensofwlo
