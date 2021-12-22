@@ -227,6 +227,22 @@
 				"role" : "libraries"
 			},
 			{
+				"fragment" : "-lSM",
+				"role" : "libraries"
+			},
+			{
+				"fragment" : "-lICE",
+				"role" : "libraries"
+			},
+			{
+				"fragment" : "-lX11",
+				"role" : "libraries"
+			},
+			{
+				"fragment" : "-lXext",
+				"role" : "libraries"
+			},
+			{
 				"fragment" : "-ltensorflow",
 				"role" : "libraries"
 			},

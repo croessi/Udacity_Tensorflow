@@ -123,6 +123,10 @@ Udacity-Tensorflow: /usr/lib/x86_64-linux-gnu/libopencv_videostab.so.4.2.0
 Udacity-Tensorflow: /usr/lib/x86_64-linux-gnu/libopencv_viz.so.4.2.0
 Udacity-Tensorflow: /usr/lib/x86_64-linux-gnu/libopencv_xobjdetect.so.4.2.0
 Udacity-Tensorflow: /usr/lib/x86_64-linux-gnu/libopencv_xphoto.so.4.2.0
+Udacity-Tensorflow: /usr/lib/x86_64-linux-gnu/libSM.so
+Udacity-Tensorflow: /usr/lib/x86_64-linux-gnu/libICE.so
+Udacity-Tensorflow: /usr/lib/x86_64-linux-gnu/libX11.so
+Udacity-Tensorflow: /usr/lib/x86_64-linux-gnu/libXext.so
 Udacity-Tensorflow: /usr/lib/x86_64-linux-gnu/libopencv_highgui.so.4.2.0
 Udacity-Tensorflow: /usr/lib/x86_64-linux-gnu/libopencv_datasets.so.4.2.0
 Udacity-Tensorflow: /usr/lib/x86_64-linux-gnu/libopencv_plot.so.4.2.0

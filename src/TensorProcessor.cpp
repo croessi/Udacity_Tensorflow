@@ -75,6 +75,14 @@ TensorProcessorClass::~TensorProcessorClass()
   TF_DeleteStatus(_status);
 }
 
+struct BoundingBox_t
+{
+  float y1;
+  float x1;
+  float y2;
+  float x2;
+};
+
 void TensorProcessorClass::SessionRunLoop()
 {
   //********* Allocate data for inputs & outputs
@@ -117,6 +125,16 @@ void TensorProcessorClass::SessionRunLoop()
       DetectionClass Detection;
       Detection.score = ((float *)TF_TensorData(OutputValues[4]))[i];
       Detection.detclass = ((float *)TF_TensorData(OutputValues[2]))[i];
+
+
+      BoundingBox_t box = ((BoundingBox_t *)TF_TensorData(OutputValues[1]))[i];
+
+      Detection.BoxTopLeft.x = (int)(box.x1*dims[2]);
+      Detection.BoxTopLeft.y = (int)(box.y1*dims[1]);
+
+      Detection.BoxBottomRigth.x = (int)(box.x2*dims[2]);
+      Detection.BoxBottomRigth.y = (int)(box.y2*dims[1]);
+
       SessionResult._detections.emplace_back(move(Detection));
     }
 

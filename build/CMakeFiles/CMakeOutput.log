@@ -475,3 +475,87 @@ make[1]: Leaving directory '/home/vscode/Udacity_Tensorflow/build/CMakeFiles/CMa
 
 
 
+Determining if the function XOpenDisplay exists in the /usr/lib/x86_64-linux-gnu/libX11.so;/usr/lib/x86_64-linux-gnu/libXext.so passed with the following output:
+Change Dir: /home/vscode/Udacity_Tensorflow/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_192f9/fast && /usr/bin/make -f CMakeFiles/cmTC_192f9.dir/build.make CMakeFiles/cmTC_192f9.dir/build
+make[1]: Entering directory '/home/vscode/Udacity_Tensorflow/build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_192f9.dir/CheckFunctionExists.c.o
+/bin/x86_64-linux-gnu-gcc-9   -DCHECK_FUNCTION_EXISTS=XOpenDisplay   -o CMakeFiles/cmTC_192f9.dir/CheckFunctionExists.c.o   -c /usr/share/cmake-3.16/Modules/CheckFunctionExists.c
+Linking C executable cmTC_192f9
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_192f9.dir/link.txt --verbose=1
+/bin/x86_64-linux-gnu-gcc-9  -DCHECK_FUNCTION_EXISTS=XOpenDisplay    -rdynamic CMakeFiles/cmTC_192f9.dir/CheckFunctionExists.c.o  -o cmTC_192f9  /usr/lib/x86_64-linux-gnu/libX11.so /usr/lib/x86_64-linux-gnu/libXext.so 
+make[1]: Leaving directory '/home/vscode/Udacity_Tensorflow/build/CMakeFiles/CMakeTmp'
+
+
+
+Determining if the function gethostbyname exists passed with the following output:
+Change Dir: /home/vscode/Udacity_Tensorflow/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_073ec/fast && /usr/bin/make -f CMakeFiles/cmTC_073ec.dir/build.make CMakeFiles/cmTC_073ec.dir/build
+make[1]: Entering directory '/home/vscode/Udacity_Tensorflow/build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_073ec.dir/CheckFunctionExists.c.o
+/bin/x86_64-linux-gnu-gcc-9   -DCHECK_FUNCTION_EXISTS=gethostbyname   -o CMakeFiles/cmTC_073ec.dir/CheckFunctionExists.c.o   -c /usr/share/cmake-3.16/Modules/CheckFunctionExists.c
+Linking C executable cmTC_073ec
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_073ec.dir/link.txt --verbose=1
+/bin/x86_64-linux-gnu-gcc-9  -DCHECK_FUNCTION_EXISTS=gethostbyname    -rdynamic CMakeFiles/cmTC_073ec.dir/CheckFunctionExists.c.o  -o cmTC_073ec 
+make[1]: Leaving directory '/home/vscode/Udacity_Tensorflow/build/CMakeFiles/CMakeTmp'
+
+
+
+Determining if the function connect exists passed with the following output:
+Change Dir: /home/vscode/Udacity_Tensorflow/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_139e8/fast && /usr/bin/make -f CMakeFiles/cmTC_139e8.dir/build.make CMakeFiles/cmTC_139e8.dir/build
+make[1]: Entering directory '/home/vscode/Udacity_Tensorflow/build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_139e8.dir/CheckFunctionExists.c.o
+/bin/x86_64-linux-gnu-gcc-9   -DCHECK_FUNCTION_EXISTS=connect   -o CMakeFiles/cmTC_139e8.dir/CheckFunctionExists.c.o   -c /usr/share/cmake-3.16/Modules/CheckFunctionExists.c
+Linking C executable cmTC_139e8
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_139e8.dir/link.txt --verbose=1
+/bin/x86_64-linux-gnu-gcc-9  -DCHECK_FUNCTION_EXISTS=connect    -rdynamic CMakeFiles/cmTC_139e8.dir/CheckFunctionExists.c.o  -o cmTC_139e8 
+make[1]: Leaving directory '/home/vscode/Udacity_Tensorflow/build/CMakeFiles/CMakeTmp'
+
+
+
+Determining if the function remove exists passed with the following output:
+Change Dir: /home/vscode/Udacity_Tensorflow/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_ed0bb/fast && /usr/bin/make -f CMakeFiles/cmTC_ed0bb.dir/build.make CMakeFiles/cmTC_ed0bb.dir/build
+make[1]: Entering directory '/home/vscode/Udacity_Tensorflow/build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_ed0bb.dir/CheckFunctionExists.c.o
+/bin/x86_64-linux-gnu-gcc-9   -DCHECK_FUNCTION_EXISTS=remove   -o CMakeFiles/cmTC_ed0bb.dir/CheckFunctionExists.c.o   -c /usr/share/cmake-3.16/Modules/CheckFunctionExists.c
+Linking C executable cmTC_ed0bb
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_ed0bb.dir/link.txt --verbose=1
+/bin/x86_64-linux-gnu-gcc-9  -DCHECK_FUNCTION_EXISTS=remove    -rdynamic CMakeFiles/cmTC_ed0bb.dir/CheckFunctionExists.c.o  -o cmTC_ed0bb 
+make[1]: Leaving directory '/home/vscode/Udacity_Tensorflow/build/CMakeFiles/CMakeTmp'
+
+
+
+Determining if the function shmat exists passed with the following output:
+Change Dir: /home/vscode/Udacity_Tensorflow/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_9709b/fast && /usr/bin/make -f CMakeFiles/cmTC_9709b.dir/build.make CMakeFiles/cmTC_9709b.dir/build
+make[1]: Entering directory '/home/vscode/Udacity_Tensorflow/build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_9709b.dir/CheckFunctionExists.c.o
+/bin/x86_64-linux-gnu-gcc-9   -DCHECK_FUNCTION_EXISTS=shmat   -o CMakeFiles/cmTC_9709b.dir/CheckFunctionExists.c.o   -c /usr/share/cmake-3.16/Modules/CheckFunctionExists.c
+Linking C executable cmTC_9709b
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_9709b.dir/link.txt --verbose=1
+/bin/x86_64-linux-gnu-gcc-9  -DCHECK_FUNCTION_EXISTS=shmat    -rdynamic CMakeFiles/cmTC_9709b.dir/CheckFunctionExists.c.o  -o cmTC_9709b 
+make[1]: Leaving directory '/home/vscode/Udacity_Tensorflow/build/CMakeFiles/CMakeTmp'
+
+
+
+Determining if the function IceConnectionNumber exists in the ICE passed with the following output:
+Change Dir: /home/vscode/Udacity_Tensorflow/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_d5875/fast && /usr/bin/make -f CMakeFiles/cmTC_d5875.dir/build.make CMakeFiles/cmTC_d5875.dir/build
+make[1]: Entering directory '/home/vscode/Udacity_Tensorflow/build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_d5875.dir/CheckFunctionExists.c.o
+/bin/x86_64-linux-gnu-gcc-9   -DCHECK_FUNCTION_EXISTS=IceConnectionNumber   -o CMakeFiles/cmTC_d5875.dir/CheckFunctionExists.c.o   -c /usr/share/cmake-3.16/Modules/CheckFunctionExists.c
+Linking C executable cmTC_d5875
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_d5875.dir/link.txt --verbose=1
+/bin/x86_64-linux-gnu-gcc-9  -DCHECK_FUNCTION_EXISTS=IceConnectionNumber    -rdynamic CMakeFiles/cmTC_d5875.dir/CheckFunctionExists.c.o  -o cmTC_d5875  -lICE 
+make[1]: Leaving directory '/home/vscode/Udacity_Tensorflow/build/CMakeFiles/CMakeTmp'
+
+
+

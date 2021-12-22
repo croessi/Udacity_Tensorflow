@@ -14,6 +14,7 @@
 #include <tensorflow/c/c_api.h>
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
+#include <opencv2/highgui.hpp>
 
 using namespace std;
 using namespace cv;
@@ -24,6 +25,8 @@ struct DetectionClass
 {
   float score;
   int detclass;
+  Point2d BoxTopLeft;
+  Point2d BoxBottomRigth;
 };
 
 class DetectionResultClass
@@ -105,11 +108,6 @@ template <class T>
 class MessageQueue
 {
 public:
-  // FP.3 Define a class âMessageQueueâ which has the public methods send and receive.
-  // Send should take an rvalue reference of type TrafficLightPhase whereas receive should return this type.
-  // Also, the class should define an std::dequeue called _queue, which stores objects of type TrafficLightPhase.
-  // Also, there should be an std::condition_variable as well as an std::mutex as private members.
-
   T receive()
   {
     // lock
@@ -128,9 +126,6 @@ public:
   {
     // lock
     std::lock_guard<std::mutex> uLock(_mutex);
-
-    // remove old not collected messages
-    //_messages.clear();
 
     // add vector to queue
     _messages.emplace_back(std::move(message));
@@ -161,7 +156,7 @@ public:
   ~TensorProcessorClass();
 
   void SessionRunLoop();
-  const string &GetStringFromClass(int classID) const { return _detClasses.find(classID)->second;}
+  const string &GetStringFromClass(int classID) const { return _detClasses.find(classID)->second; }
 
   const map<int, string> &GetDetClasses() const { return _detClasses; }
 
@@ -178,7 +173,7 @@ private:
   unique_ptr<TF_Status> _status;
   */
 
-  TF_Graph *_graph;
+  unique_ptr<TF_Graph> _graph;
 
   TF_SessionOptions *_sessionOpts;
   TF_Buffer *_runOpts;
