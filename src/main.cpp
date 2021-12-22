@@ -49,10 +49,8 @@ int main()
   //give thread som tme to instanciate
   std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
-  //unique_ptr<DetectionResultClass> DetectionResult = make_unique<DetectionResultClass>(Reader.getNextFrame());
-
+  //frame counter
   int c1 = 0;
-
   while (true)
   {
 
@@ -63,6 +61,8 @@ int main()
     {
       cout << "No more Frames\n";
       waitKey();
+
+      detectorThread.
       // When everything done, release the video capture object
       destroyAllWindows();
       return 0;
@@ -128,7 +128,5 @@ int main()
     }
     c1++;
   }
-
-
   return 0;
 }
