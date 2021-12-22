@@ -57,9 +57,22 @@ include CMakeFiles/Udacity-Tensorflow.dir/progress.make
 # Include the compile flags for this target's objects.
 include CMakeFiles/Udacity-Tensorflow.dir/flags.make
 
+CMakeFiles/Udacity-Tensorflow.dir/src/ReadClassesToLabels.cpp.o: CMakeFiles/Udacity-Tensorflow.dir/flags.make
+CMakeFiles/Udacity-Tensorflow.dir/src/ReadClassesToLabels.cpp.o: ../src/ReadClassesToLabels.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/vscode/Udacity_Tensorflow/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/Udacity-Tensorflow.dir/src/ReadClassesToLabels.cpp.o"
+	/bin/x86_64-linux-gnu-g++-9  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/Udacity-Tensorflow.dir/src/ReadClassesToLabels.cpp.o -c /home/vscode/Udacity_Tensorflow/src/ReadClassesToLabels.cpp
+
+CMakeFiles/Udacity-Tensorflow.dir/src/ReadClassesToLabels.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/Udacity-Tensorflow.dir/src/ReadClassesToLabels.cpp.i"
+	/bin/x86_64-linux-gnu-g++-9 $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vscode/Udacity_Tensorflow/src/ReadClassesToLabels.cpp > CMakeFiles/Udacity-Tensorflow.dir/src/ReadClassesToLabels.cpp.i
+
+CMakeFiles/Udacity-Tensorflow.dir/src/ReadClassesToLabels.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/Udacity-Tensorflow.dir/src/ReadClassesToLabels.cpp.s"
+	/bin/x86_64-linux-gnu-g++-9 $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vscode/Udacity_Tensorflow/src/ReadClassesToLabels.cpp -o CMakeFiles/Udacity-Tensorflow.dir/src/ReadClassesToLabels.cpp.s
+
 CMakeFiles/Udacity-Tensorflow.dir/src/TensorProcessor.cpp.o: CMakeFiles/Udacity-Tensorflow.dir/flags.make
 CMakeFiles/Udacity-Tensorflow.dir/src/TensorProcessor.cpp.o: ../src/TensorProcessor.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/vscode/Udacity_Tensorflow/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/Udacity-Tensorflow.dir/src/TensorProcessor.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/vscode/Udacity_Tensorflow/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/Udacity-Tensorflow.dir/src/TensorProcessor.cpp.o"
 	/bin/x86_64-linux-gnu-g++-9  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/Udacity-Tensorflow.dir/src/TensorProcessor.cpp.o -c /home/vscode/Udacity_Tensorflow/src/TensorProcessor.cpp
 
 CMakeFiles/Udacity-Tensorflow.dir/src/TensorProcessor.cpp.i: cmake_force
@@ -72,7 +85,7 @@ CMakeFiles/Udacity-Tensorflow.dir/src/TensorProcessor.cpp.s: cmake_force
 
 CMakeFiles/Udacity-Tensorflow.dir/src/VideoReader.cpp.o: CMakeFiles/Udacity-Tensorflow.dir/flags.make
 CMakeFiles/Udacity-Tensorflow.dir/src/VideoReader.cpp.o: ../src/VideoReader.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/vscode/Udacity_Tensorflow/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/Udacity-Tensorflow.dir/src/VideoReader.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/vscode/Udacity_Tensorflow/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/Udacity-Tensorflow.dir/src/VideoReader.cpp.o"
 	/bin/x86_64-linux-gnu-g++-9  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/Udacity-Tensorflow.dir/src/VideoReader.cpp.o -c /home/vscode/Udacity_Tensorflow/src/VideoReader.cpp
 
 CMakeFiles/Udacity-Tensorflow.dir/src/VideoReader.cpp.i: cmake_force
@@ -85,7 +98,7 @@ CMakeFiles/Udacity-Tensorflow.dir/src/VideoReader.cpp.s: cmake_force
 
 CMakeFiles/Udacity-Tensorflow.dir/src/main.cpp.o: CMakeFiles/Udacity-Tensorflow.dir/flags.make
 CMakeFiles/Udacity-Tensorflow.dir/src/main.cpp.o: ../src/main.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/vscode/Udacity_Tensorflow/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/Udacity-Tensorflow.dir/src/main.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/vscode/Udacity_Tensorflow/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/Udacity-Tensorflow.dir/src/main.cpp.o"
 	/bin/x86_64-linux-gnu-g++-9  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/Udacity-Tensorflow.dir/src/main.cpp.o -c /home/vscode/Udacity_Tensorflow/src/main.cpp
 
 CMakeFiles/Udacity-Tensorflow.dir/src/main.cpp.i: cmake_force
@@ -98,6 +111,7 @@ CMakeFiles/Udacity-Tensorflow.dir/src/main.cpp.s: cmake_force
 
 # Object files for target Udacity-Tensorflow
 Udacity__Tensorflow_OBJECTS = \
+"CMakeFiles/Udacity-Tensorflow.dir/src/ReadClassesToLabels.cpp.o" \
 "CMakeFiles/Udacity-Tensorflow.dir/src/TensorProcessor.cpp.o" \
 "CMakeFiles/Udacity-Tensorflow.dir/src/VideoReader.cpp.o" \
 "CMakeFiles/Udacity-Tensorflow.dir/src/main.cpp.o"
@@ -105,6 +119,7 @@ Udacity__Tensorflow_OBJECTS = \
 # External object files for target Udacity-Tensorflow
 Udacity__Tensorflow_EXTERNAL_OBJECTS =
 
+Udacity-Tensorflow: CMakeFiles/Udacity-Tensorflow.dir/src/ReadClassesToLabels.cpp.o
 Udacity-Tensorflow: CMakeFiles/Udacity-Tensorflow.dir/src/TensorProcessor.cpp.o
 Udacity-Tensorflow: CMakeFiles/Udacity-Tensorflow.dir/src/VideoReader.cpp.o
 Udacity-Tensorflow: CMakeFiles/Udacity-Tensorflow.dir/src/main.cpp.o
@@ -162,7 +177,7 @@ Udacity-Tensorflow: /usr/lib/x86_64-linux-gnu/libopencv_photo.so.4.2.0
 Udacity-Tensorflow: /usr/lib/x86_64-linux-gnu/libopencv_imgproc.so.4.2.0
 Udacity-Tensorflow: /usr/lib/x86_64-linux-gnu/libopencv_core.so.4.2.0
 Udacity-Tensorflow: CMakeFiles/Udacity-Tensorflow.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/vscode/Udacity_Tensorflow/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Linking CXX executable Udacity-Tensorflow"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/vscode/Udacity_Tensorflow/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Linking CXX executable Udacity-Tensorflow"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/Udacity-Tensorflow.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

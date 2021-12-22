@@ -145,6 +145,33 @@ Udacity-Tensorflow/fast:
 	$(MAKE) -f CMakeFiles/Udacity-Tensorflow.dir/build.make CMakeFiles/Udacity-Tensorflow.dir/build
 .PHONY : Udacity-Tensorflow/fast
 
+src/ReadClassesToLabels.o: src/ReadClassesToLabels.cpp.o
+
+.PHONY : src/ReadClassesToLabels.o
+
+# target to build an object file
+src/ReadClassesToLabels.cpp.o:
+	$(MAKE) -f CMakeFiles/Udacity-Tensorflow.dir/build.make CMakeFiles/Udacity-Tensorflow.dir/src/ReadClassesToLabels.cpp.o
+.PHONY : src/ReadClassesToLabels.cpp.o
+
+src/ReadClassesToLabels.i: src/ReadClassesToLabels.cpp.i
+
+.PHONY : src/ReadClassesToLabels.i
+
+# target to preprocess a source file
+src/ReadClassesToLabels.cpp.i:
+	$(MAKE) -f CMakeFiles/Udacity-Tensorflow.dir/build.make CMakeFiles/Udacity-Tensorflow.dir/src/ReadClassesToLabels.cpp.i
+.PHONY : src/ReadClassesToLabels.cpp.i
+
+src/ReadClassesToLabels.s: src/ReadClassesToLabels.cpp.s
+
+.PHONY : src/ReadClassesToLabels.s
+
+# target to generate assembly for a file
+src/ReadClassesToLabels.cpp.s:
+	$(MAKE) -f CMakeFiles/Udacity-Tensorflow.dir/build.make CMakeFiles/Udacity-Tensorflow.dir/src/ReadClassesToLabels.cpp.s
+.PHONY : src/ReadClassesToLabels.cpp.s
+
 src/TensorProcessor.o: src/TensorProcessor.cpp.o
 
 .PHONY : src/TensorProcessor.o
@@ -237,6 +264,9 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... package"
 	@echo "... Udacity-Tensorflow"
+	@echo "... src/ReadClassesToLabels.o"
+	@echo "... src/ReadClassesToLabels.i"
+	@echo "... src/ReadClassesToLabels.s"
 	@echo "... src/TensorProcessor.o"
 	@echo "... src/TensorProcessor.i"
 	@echo "... src/TensorProcessor.s"

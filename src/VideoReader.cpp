@@ -1,5 +1,7 @@
 #include "VideoReader.h"
 
+#include <iostream>
+
 void VideoReader::FrameReadLoop()
 {
     unique_lock<mutex> lck(_mut);
@@ -19,9 +21,12 @@ void VideoReader::FrameReadLoop()
             *_cap >> f;
 
             /// If the frame is empty,errormessage
-            //if (f.empty())
-            //  cout << "Error while reading Frame";
-
+            if (f.empty())
+            {
+                cout << "No more frames -> exit framegrabber thread."; 
+                return;
+            }
+        
             lck.lock();
             _frameBuffer.emplace(_frameBuffer.begin(), move(f));
         }
@@ -49,6 +54,7 @@ unique_ptr<Mat> VideoReader::getNextFrame()
             lck.unlock();
             return move(frame);
         }
+        
 
         if (lck.owns_lock())
             lck.unlock();

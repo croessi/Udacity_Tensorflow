@@ -16,10 +16,64 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui.hpp>
 
+
+#include "ReadClassesToLabels.h"
+
 using namespace std;
 using namespace cv;
 
 class TensorProcessorClass;
+class DetectorClass;
+class DetectionResultclass;
+
+// generic Detector Class
+class DetectorClass
+{
+protected:
+
+  DetectorClass(string nameOfInputs, int numInputs, string nameOfOutputs, int numOutputs, string PtoModel, map<int, string> detClasses) : _nameOfInputs(nameOfInputs),
+                                                                                                                                         _numInputs(numInputs),
+                                                                                                                                         _nameOfOutputs(nameOfOutputs),
+                                                                                                                                         _numOutputs(numOutputs),
+                                                                                                                                         _pathToModel(PtoModel),
+                                                                                                                                         _detClasses(detClasses){};
+
+
+
+public:
+  DetectorClass() : _nameOfInputs(""),
+                                                                                                                                         _numInputs(1),
+                                                                                                                                         _nameOfOutputs(""),
+                                                                                                                                         _numOutputs(1),
+                                                                                                                                         _pathToModel(""),
+                                                                                                                                         _detClasses(){};
+  ~DetectorClass(){};
+  
+  virtual string GetDetectorName(){return "";}
+   const string &GetStringFromClass(int classID) const { return _detClasses.find(classID)->second; }
+  const map<int, string> &GetDetClasses() const { return _detClasses; }
+
+  const int _numInputs;
+  const int _numOutputs;
+  const string _nameOfOutputs;
+  const string _nameOfInputs;
+  const string _pathToModel;
+
+private:
+  const map<int, string> _detClasses;
+};
+
+
+//specific class for Mobilenet containing its config
+// https://tfhub.dev/tensorflow/ssd_mobilenet_v2/2
+class MobilenetV2Class : public DetectorClass
+{
+public:
+  MobilenetV2Class(string PathToModel) : DetectorClass("serving_default_input_tensor", 1, "StatefulPartitionedCall", 8, PathToModel, ReadClasses2Labels(PathToModel + "mscoco_label_map.pbtxt")){};
+  ~MobilenetV2Class(){};
+
+  string GetDetectorName() override {return "MobilenetV2Class";}
+};
 
 struct DetectionClass
 {
@@ -39,7 +93,7 @@ private:
 protected:
   vector<DetectionClass> _detections;
 
-  friend TensorProcessorClass;
+  friend TensorProcessorClass; //make it friend to allow acess from Processor Class to Detections (but not other classes)
 
 public:
   const Mat &GetImage() { return *_image; }
@@ -145,34 +199,26 @@ private:
   std::deque<T> _messages;
 };
 
+struct BoundingBox_t
+{
+  float y1;
+  float x1;
+  float y2;
+  float x2;
+};
+
 class TensorProcessorClass
 {
 public:
-  TensorProcessorClass(const string saved_model_dir,
-                       const int NumInputs,
-                       const string Input_Tensor_Name,
-                       const int NumOutputs,
-                       const string Output_Tensor_Name);
+  TensorProcessorClass(DetectorClass Detector);
   ~TensorProcessorClass();
 
   void SessionRunLoop();
-  const string &GetStringFromClass(int classID) const { return _detClasses.find(classID)->second; }
-
-  const map<int, string> &GetDetClasses() const { return _detClasses; }
 
   MessageQueue<DetectionResultClass> input_queue;
   MessageQueue<DetectionResultClass> output_queue;
 
 private:
-  /*
-  unique_ptr<TF_Graph> _graph;
-
-  unique_ptr<TF_SessionOptions> _sessionOpts;
-  unique_ptr<TF_Buffer> _runOpts;
-  unique_ptr<TF_Session> _session;
-  unique_ptr<TF_Status> _status;
-  */
-
   TF_Graph *_graph;
   TF_SessionOptions *_sessionOpts;
   TF_Buffer *_runOpts;
@@ -180,10 +226,7 @@ private:
   TF_Status *_status;
   TF_Output *_input;
   TF_Output *_output;
-  map<int, string> _detClasses;
-
-  const int _numInputs;
-  const int _numOutputs;
+  DetectorClass _detector;
 };
 
 #endif

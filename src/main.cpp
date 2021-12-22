@@ -14,7 +14,6 @@
 #include "VideoReader.h"
 #include "TensorProcessor.h"
 
-
 using namespace cv;
 using namespace std;
 
@@ -41,8 +40,13 @@ int main()
   //give thread som tme to instanciate
   std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
-  //load Model
-  TensorProcessorClass TensorProcessor("../ssd_mobilenet_v2", 1, "serving_default_input_tensor", 8, "StatefulPartitionedCall");
+  //create Detector Instance of ssd_mobilenet_v2
+  MobilenetV2Class MobilenetV2("../ssd_mobilenet_v2");
+
+ // DetectorClass MobilenetV2;
+
+  //load Model into processor
+  TensorProcessorClass TensorProcessor(MobilenetV2);
 
   //start detector thread
   thread detectorThread(&TensorProcessorClass::SessionRunLoop, &TensorProcessor);
@@ -62,8 +66,7 @@ int main()
       cout << "No more Frames\n";
       waitKey();
 
-      detectorThread.
-      // When everything done, release the video capture object
+      // When everything done, release the video window
       destroyAllWindows();
       return 0;
     }
@@ -88,7 +91,7 @@ int main()
       {
         //get Image from detection and display
         DetectionResultClass SessionOutput(TensorProcessor.output_queue.receive());
-        cout << "Detection Score of id: " << SessionOutput.GetDetections()[0].score << " " << TensorProcessor.GetStringFromClass(SessionOutput.GetDetections()[0].detclass) << " at TopLeft Postion: " << SessionOutput.GetDetections()[0].BoxTopLeft.x << "," << SessionOutput.GetDetections()[0].BoxTopLeft.y << "\n";
+        cout << "Detection Score of id: " << SessionOutput.GetDetections()[0].score << " " << MobilenetV2.GetStringFromClass(SessionOutput.GetDetections()[0].detclass) << " at TopLeft Postion: " << SessionOutput.GetDetections()[0].BoxTopLeft.x << "," << SessionOutput.GetDetections()[0].BoxTopLeft.y << "\n";
 
         char buffer[100];
         for (DetectionClass d : SessionOutput.GetDetections())
@@ -99,7 +102,7 @@ int main()
           {
             rectangle(SessionOutput.GetImage(), d.BoxTopLeft, d.BoxBottomRigth, Scalar(0, 255, 0), 1, 8, 0);
 
-            snprintf(buffer, 100, "%s %d%%", TensorProcessor.GetStringFromClass(d.detclass).c_str(), (int)(d.score * 100));
+            snprintf(buffer, 100, "%s %d%%", MobilenetV2.GetStringFromClass(d.detclass).c_str(), (int)(d.score * 100));
 
             putText(SessionOutput.GetImage(),
                     buffer,
