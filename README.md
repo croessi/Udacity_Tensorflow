@@ -12,6 +12,28 @@ Features
 
 
 # Installation
+### Prerequistes
+- Tested on Ubuntu 20.X
+
+### Tensorflow for C
+excute on shell:
+
+FILENAME=libtensorflow-cpu-linux-x86_64-2.7.0.tar.gz
+wget -q --no-check-certificate https://storage.googleapis.com/tensorflow/libtensorflow/${FILENAME}
+sudo tar -C /usr/local -xzf ${FILENAME}
+
+sudo ldconfig /usr/local/lib
+
+### OpenCV with FFMPEG
+Prerequistes (copied from here https://linuxize.com/post/how-to-install-opencv-on-ubuntu-20-04/ - folow the instructions there if you do not want to oad pre-build OpenCV):
+sudo apt install pkg-config libgtk-3-dev libavcodec-dev libavformat-dev libswscale-dev libv4l-dev libxvidcore-dev libx264-dev libjpeg-dev libpng-dev libtiff-dev
+sudo apt install gfortran openexr libatlas-base-dev python3-dev python3-numpy libtbb2 libtbb-dev libdc1394-22-dev libopenexr-dev libgstreamer-plugins-base1.0-dev
+sudo apt libgstreamer1.0-dev
+
+Opencv from Package Manager:
+sudo apt install libopencv-dev
+
+### OpenCV with FFMPEG
 
 # Know Issues
 - Itried to replace the pointers and mallocs from the tensofwlo
