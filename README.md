@@ -40,6 +40,14 @@ sudo apt install libopencv-dev
  mkdir build
  
  cmake .
+ 
+ # File and Class description
+ TODO
+ - All class members that are set to argument values are initialized through member initialization lists.
+ - One function is overloaded with different signatures for the same function name.
+ - One member function in an inherited class overrides a virtual base class member function.
+ - delete stuff from tensorflow properly
+ - A promise and future is used to pass data from a worker thread to a parent thread in the project code.
 
 # Know Issues
 - Itried to replace the pointers and mallocs from the tensofwlo
