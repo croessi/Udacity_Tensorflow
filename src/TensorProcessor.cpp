@@ -54,6 +54,7 @@ TensorProcessorClass::TensorProcessorClass(const string saved_model_dir,
 
   //********* Get Output tensor
   _output = (TF_Output *)malloc(sizeof(TF_Output) * _numOutputs);
+  //vector<TF_Output> _output(_numOutputs);
 
   for (int i = 0; i < NumOutputs; i++)
   {
@@ -126,14 +127,13 @@ void TensorProcessorClass::SessionRunLoop()
       Detection.score = ((float *)TF_TensorData(OutputValues[4]))[i];
       Detection.detclass = ((float *)TF_TensorData(OutputValues[2]))[i];
 
-
       BoundingBox_t box = ((BoundingBox_t *)TF_TensorData(OutputValues[1]))[i];
 
-      Detection.BoxTopLeft.x = (int)(box.x1*dims[2]);
-      Detection.BoxTopLeft.y = (int)(box.y1*dims[1]);
+      Detection.BoxTopLeft.x = (int)(box.x1 * dims[2]);
+      Detection.BoxTopLeft.y = (int)(box.y1 * dims[1]);
 
-      Detection.BoxBottomRigth.x = (int)(box.x2*dims[2]);
-      Detection.BoxBottomRigth.y = (int)(box.y2*dims[1]);
+      Detection.BoxBottomRigth.x = (int)(box.x2 * dims[2]);
+      Detection.BoxBottomRigth.y = (int)(box.y2 * dims[1]);
 
       SessionResult._detections.emplace_back(move(Detection));
     }

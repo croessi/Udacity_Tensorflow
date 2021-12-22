@@ -173,8 +173,7 @@ private:
   unique_ptr<TF_Status> _status;
   */
 
-  unique_ptr<TF_Graph> _graph;
-
+  TF_Graph *_graph;
   TF_SessionOptions *_sessionOpts;
   TF_Buffer *_runOpts;
   TF_Session *_session;

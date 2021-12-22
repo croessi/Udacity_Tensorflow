@@ -172,6 +172,33 @@ src/TensorProcessor.cpp.s:
 	$(MAKE) -f CMakeFiles/Udacity-Tensorflow.dir/build.make CMakeFiles/Udacity-Tensorflow.dir/src/TensorProcessor.cpp.s
 .PHONY : src/TensorProcessor.cpp.s
 
+src/VideoReader.o: src/VideoReader.cpp.o
+
+.PHONY : src/VideoReader.o
+
+# target to build an object file
+src/VideoReader.cpp.o:
+	$(MAKE) -f CMakeFiles/Udacity-Tensorflow.dir/build.make CMakeFiles/Udacity-Tensorflow.dir/src/VideoReader.cpp.o
+.PHONY : src/VideoReader.cpp.o
+
+src/VideoReader.i: src/VideoReader.cpp.i
+
+.PHONY : src/VideoReader.i
+
+# target to preprocess a source file
+src/VideoReader.cpp.i:
+	$(MAKE) -f CMakeFiles/Udacity-Tensorflow.dir/build.make CMakeFiles/Udacity-Tensorflow.dir/src/VideoReader.cpp.i
+.PHONY : src/VideoReader.cpp.i
+
+src/VideoReader.s: src/VideoReader.cpp.s
+
+.PHONY : src/VideoReader.s
+
+# target to generate assembly for a file
+src/VideoReader.cpp.s:
+	$(MAKE) -f CMakeFiles/Udacity-Tensorflow.dir/build.make CMakeFiles/Udacity-Tensorflow.dir/src/VideoReader.cpp.s
+.PHONY : src/VideoReader.cpp.s
+
 src/main.o: src/main.cpp.o
 
 .PHONY : src/main.o
@@ -213,6 +240,9 @@ help:
 	@echo "... src/TensorProcessor.o"
 	@echo "... src/TensorProcessor.i"
 	@echo "... src/TensorProcessor.s"
+	@echo "... src/VideoReader.o"
+	@echo "... src/VideoReader.i"
+	@echo "... src/VideoReader.s"
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"
