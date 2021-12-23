@@ -13,6 +13,8 @@
 
 #include "VideoReader.h"
 #include "TensorProcessor.h"
+#include "MessageQueue.h"
+#include "MessageQueue.cpp" //neded to avoid linker issues
 
 using namespace cv;
 using namespace std;
