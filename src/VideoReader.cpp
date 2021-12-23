@@ -2,6 +2,20 @@
 
 #include <iostream>
 
+void VideoReader::StartGrabberThread()
+{
+    _readFrameLoopThread = thread(&VideoReader::FrameReadLoop, this);
+}
+
+void VideoReader::StopGrabberThread()
+{
+    unique_lock<mutex> lck(_mut);
+    _exitThread = true;
+    lck.unlock();
+    cout << "Waiting for Frame Grabber thread to join.\n";
+    _readFrameLoopThread.join();
+}
+
 void VideoReader::FrameReadLoop()
 {
     unique_lock<mutex> lck(_mut);
@@ -20,14 +34,17 @@ void VideoReader::FrameReadLoop()
             Mat f;
             *_cap >> f;
 
-            /// If the frame is empty,errormessage
-            if (f.empty())
+            lck.lock();
+            // If the frame is empty no more to read -> exit thread
+            if (f.empty() || _exitThread)
             {
-                cout << "No more frames -> exit framegrabber thread."; 
+                cout << "No more frames -> exit framegrabber thread.\n";
+
+                _frameBuffer.emplace(_frameBuffer.begin(), move(f));
+                lck.unlock();
                 return;
             }
-        
-            lck.lock();
+
             _frameBuffer.emplace(_frameBuffer.begin(), move(f));
         }
 
@@ -38,6 +55,9 @@ void VideoReader::FrameReadLoop()
 
         lck.lock();
     }
+
+    //Release video capture
+    _cap->release();
 }
 
 unique_ptr<Mat> VideoReader::getNextFrame()
@@ -54,7 +74,6 @@ unique_ptr<Mat> VideoReader::getNextFrame()
             lck.unlock();
             return move(frame);
         }
-        
 
         if (lck.owns_lock())
             lck.unlock();

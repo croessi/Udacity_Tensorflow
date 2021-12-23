@@ -11,7 +11,21 @@ void NoOpDeallocator(void *data, size_t a, void *b) {}
                                                                               _numOutputs(NumOutputs)
                                                                               */
 
-TensorProcessorClass::TensorProcessorClass(DetectorClass Detector):_detector(Detector)
+void TensorProcessorClass::StartProcessorThread()
+{
+  _detectorThread = thread(&TensorProcessorClass::SessionRunLoop, this);
+}
+void TensorProcessorClass::StopProcessorThread()
+{
+  //create empty frame and set it to queue to trigger thread exit
+  unique_ptr<Mat> frame = make_unique<Mat>(Mat(Size(0, 0), CV_8U));
+  DetectionResultClass det(move(frame));
+  input_queue.send(move(det));
+  cout << "Waiting for Detector thread to join.\n";
+  _detectorThread.join();
+}
+
+TensorProcessorClass::TensorProcessorClass(shared_ptr<DetectorClass> Detector) : _detector(Detector)
 {
 
   _graph = TF_NewGraph();
@@ -23,16 +37,16 @@ TensorProcessorClass::TensorProcessorClass(DetectorClass Detector):_detector(Det
   const char *tags = "serve"; // default model serving tag; can change in future
   int ntags = 1;
 
-  _session = TF_LoadSessionFromSavedModel(_sessionOpts, _runOpts, Detector._pathToModel.c_str(), &tags, ntags, _graph, NULL, _status);
+  _session = TF_LoadSessionFromSavedModel(_sessionOpts, _runOpts, _detector->_pathToModel.c_str(), &tags, ntags, _graph, NULL, _status);
   if (TF_GetCode(_status) == TF_OK)
-    cout << "Loading Model " << _detector.GetDetectorName() << " from: " << _detector._pathToModel << " was successfull\n";
+    cout << "Loading Model " << _detector->GetDetectorName() << " from: " << _detector->_pathToModel << " was successfull\n";
   else
-    cout << "Loading Model " << _detector.GetDetectorName() << " from: " << _detector._pathToModel << " FAILED!!!!!" << TF_Message(_status);
+    cout << "Loading Model " << _detector->GetDetectorName() << " from: " << _detector->_pathToModel << " FAILED!!!!!" << TF_Message(_status);
 
   //****** Get input tensor
-  _input = (TF_Output *)malloc(sizeof(TF_Output) * _detector._numInputs);
+  _input = (TF_Output *)malloc(sizeof(TF_Output) * _detector->_numInputs);
 
-  TF_Output t0 = {TF_GraphOperationByName(_graph, _detector._nameOfInputs.c_str()), 0};
+  TF_Output t0 = {TF_GraphOperationByName(_graph, _detector->_nameOfInputs.c_str()), 0};
   if (t0.oper == NULL)
   {
     cout << "ERROR: Failed finding Input Tensor\n";
@@ -43,12 +57,12 @@ TensorProcessorClass::TensorProcessorClass(DetectorClass Detector):_detector(Det
   _input[0] = t0;
 
   //********* Get Output tensor
-  _output = (TF_Output *)malloc(sizeof(TF_Output) * _detector._numOutputs);
+  _output = (TF_Output *)malloc(sizeof(TF_Output) * _detector->_numOutputs);
   //vector<TF_Output> _output(_numOutputs);
 
-  for (int i = 0; i < Detector._numOutputs; i++)
+  for (int i = 0; i < _detector->_numOutputs; i++)
   {
-    TF_Output t2 = {TF_GraphOperationByName(_graph, _detector._nameOfOutputs.c_str()), i};
+    TF_Output t2 = {TF_GraphOperationByName(_graph, _detector->_nameOfOutputs.c_str()), i};
     if (t2.oper == NULL)
       cout << "ERROR: Failed finding Output Tensor Nr: " << i << endl;
 
@@ -71,13 +85,20 @@ TensorProcessorClass::~TensorProcessorClass()
 void TensorProcessorClass::SessionRunLoop()
 {
   //********* Allocate data for inputs & outputs
-  TF_Tensor **InputValues = (TF_Tensor **)malloc(sizeof(TF_Tensor *) * _detector._numInputs);
-  TF_Tensor **OutputValues = (TF_Tensor **)malloc(sizeof(TF_Tensor *) * _detector._numOutputs);
+  TF_Tensor **InputValues = (TF_Tensor **)malloc(sizeof(TF_Tensor *) * _detector->_numInputs);
+  TF_Tensor **OutputValues = (TF_Tensor **)malloc(sizeof(TF_Tensor *) * _detector->_numOutputs);
 
   while (true)
   {
     //wait for empty detection to be received
     DetectionResultClass SessionResult = input_queue.receive();
+
+    if (SessionResult.GetImage().size[0] == 0 || SessionResult.GetImage().size[1] == 0)
+    {
+      free(InputValues);
+      free(OutputValues);
+      return;
+    } 
 
     int ndims = 4;
 
@@ -95,7 +116,7 @@ void TensorProcessorClass::SessionRunLoop()
     InputValues[0] = int_tensor;
 
     //Run the Session
-    TF_SessionRun(_session, NULL, _input, InputValues, _detector._numInputs, _output, OutputValues, _detector._numOutputs, NULL, 0, NULL, _status);
+    TF_SessionRun(_session, NULL, _input, InputValues, _detector->_numInputs, _output, OutputValues, _detector->_numOutputs, NULL, 0, NULL, _status);
 
     if (TF_GetCode(_status) == TF_OK)
       cout << "Session ran through\n";
@@ -124,5 +145,6 @@ void TensorProcessorClass::SessionRunLoop()
 
     //move back detection via receive que
     output_queue.send(move(SessionResult));
+
   }
 }

@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <vector>
 #include <deque>
+#include <thread>
 #include <string>
 #include <map>
 
@@ -15,7 +16,6 @@
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui.hpp>
-
 
 #include "ReadClassesToLabels.h"
 
@@ -30,27 +30,24 @@ class DetectionResultclass;
 class DetectorClass
 {
 protected:
-
   DetectorClass(string nameOfInputs, int numInputs, string nameOfOutputs, int numOutputs, string PtoModel, map<int, string> detClasses) : _nameOfInputs(nameOfInputs),
-                                                                                                                                         _numInputs(numInputs),
-                                                                                                                                         _nameOfOutputs(nameOfOutputs),
-                                                                                                                                         _numOutputs(numOutputs),
-                                                                                                                                         _pathToModel(PtoModel),
-                                                                                                                                         _detClasses(detClasses){};
-
-
+                                                                                                                                          _numInputs(numInputs),
+                                                                                                                                          _nameOfOutputs(nameOfOutputs),
+                                                                                                                                          _numOutputs(numOutputs),
+                                                                                                                                          _pathToModel(PtoModel),
+                                                                                                                                          _detClasses(detClasses){};
 
 public:
   DetectorClass() : _nameOfInputs(""),
-                                                                                                                                         _numInputs(1),
-                                                                                                                                         _nameOfOutputs(""),
-                                                                                                                                         _numOutputs(1),
-                                                                                                                                         _pathToModel(""),
-                                                                                                                                         _detClasses(){};
+                    _numInputs(1),
+                    _nameOfOutputs(""),
+                    _numOutputs(1),
+                    _pathToModel(""),
+                    _detClasses(){};
   ~DetectorClass(){};
-  
-  virtual string GetDetectorName(){return "";}
-   const string &GetStringFromClass(int classID) const { return _detClasses.find(classID)->second; }
+
+  virtual string GetDetectorName() { return ""; }
+  const string &GetStringFromClass(int classID) const { return _detClasses.find(classID)->second; }
   const map<int, string> &GetDetClasses() const { return _detClasses; }
 
   const int _numInputs;
@@ -63,16 +60,15 @@ private:
   const map<int, string> _detClasses;
 };
 
-
 //specific class for Mobilenet containing its config
 // https://tfhub.dev/tensorflow/ssd_mobilenet_v2/2
 class MobilenetV2Class : public DetectorClass
 {
 public:
-  MobilenetV2Class(string PathToModel) : DetectorClass("serving_default_input_tensor", 1, "StatefulPartitionedCall", 8, PathToModel, ReadClasses2Labels(PathToModel + "mscoco_label_map.pbtxt")){};
+  MobilenetV2Class(string PathToModel) : DetectorClass("serving_default_input_tensor", 1, "StatefulPartitionedCall", 8, PathToModel, ReadClasses2Labels(PathToModel + "/" + "mscoco_label_map.pbtxt")){};
   ~MobilenetV2Class(){};
 
-  string GetDetectorName() override {return "MobilenetV2Class";}
+  string GetDetectorName() override { return "MobilenetV2Class"; }
 };
 
 struct DetectionClass
@@ -210,13 +206,16 @@ struct BoundingBox_t
 class TensorProcessorClass
 {
 public:
-  TensorProcessorClass(DetectorClass Detector);
+  TensorProcessorClass(shared_ptr<DetectorClass> Detector);
   ~TensorProcessorClass();
 
-  void SessionRunLoop();
+  void StartProcessorThread();
+  void StopProcessorThread();
 
   MessageQueue<DetectionResultClass> input_queue;
   MessageQueue<DetectionResultClass> output_queue;
+
+  void SessionRunLoop();
 
 private:
   TF_Graph *_graph;
@@ -226,7 +225,9 @@ private:
   TF_Status *_status;
   TF_Output *_input;
   TF_Output *_output;
-  DetectorClass _detector;
+  shared_ptr<DetectorClass> _detector;
+  thread _detectorThread;
+
 };
 
 #endif

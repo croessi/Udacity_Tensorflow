@@ -21,12 +21,17 @@ private:
     unique_ptr<VideoCapture> _cap;
     vector<Mat> _frameBuffer;
     mutex _mut;
+    thread _readFrameLoopThread;
 
-    bool _isokay;
+    bool _exitThread;
 
 public:
-    VideoReader(string filename) : _filename(filename), _cap(nullptr){};
+    VideoReader(string filename) : _filename(filename), _cap(nullptr), _exitThread(false){};
     ~VideoReader() { _cap.release(); };
+
+    void StartGrabberThread();
+    void StopGrabberThread();
+
     string getFilename() { return _filename; }
 
     //this thread allways tries to fill the framebuffe with 5 frames

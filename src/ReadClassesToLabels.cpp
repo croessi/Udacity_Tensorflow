@@ -25,11 +25,10 @@ map<int, string> ReadClasses2Labels(string filename)
                 getline(myfile, line);
                 istringstream sline1(line);
                 sline1 >> key >> name1;
-                
+
                 name1.erase(remove(name1.begin(), name1.end(), '\"'), name1.end());
 
-                
-                ret[id]=name1;
+                ret[id] = name1;
             }
         }
     }

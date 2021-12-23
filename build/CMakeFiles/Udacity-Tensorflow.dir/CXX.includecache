@@ -35,6 +35,8 @@ vector
 -
 deque
 -
+thread
+-
 string
 -
 map

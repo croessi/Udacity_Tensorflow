@@ -28,28 +28,26 @@ int main()
   //detect display
   Display *disp(XOpenDisplay(NULL));
   haveDisplay = XOpenDisplay(NULL);
-  XCloseDisplay(disp);
+  if (haveDisplay)
+    XCloseDisplay(disp);
 
   //create instance of video reader
   VideoReader Reader("/home/vscode/Udacity_Tensorflow/output.mp4");
 
-  //promise<void> prmsVideoOpen;
-  //future<void> ftrVideoOpen = prmsVideoOpen.get_future();
+  Reader.StartGrabberThread();
 
-  thread readFrameLoopThread(&VideoReader::FrameReadLoop, &Reader);
   //give thread som tme to instanciate
   std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
   //create Detector Instance of ssd_mobilenet_v2
-  MobilenetV2Class MobilenetV2("../ssd_mobilenet_v2");
-
- // DetectorClass MobilenetV2;
+  shared_ptr<MobilenetV2Class> MobilenetV2 = make_shared<MobilenetV2Class>("../ssd_mobilenet_v2");
 
   //load Model into processor
   TensorProcessorClass TensorProcessor(MobilenetV2);
 
   //start detector thread
-  thread detectorThread(&TensorProcessorClass::SessionRunLoop, &TensorProcessor);
+  TensorProcessor.StartProcessorThread();
+
   //give thread som tme to instanciate
   std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
@@ -64,7 +62,13 @@ int main()
     if (frame->empty())
     {
       cout << "No more Frames\n";
-      waitKey();
+      if (haveDisplay)
+        waitKey();
+
+      //Stop Threads
+      cout << "Stopping Threads\n";
+      Reader.StopGrabberThread();
+      TensorProcessor.StopProcessorThread();
 
       // When everything done, release the video window
       destroyAllWindows();
@@ -91,7 +95,7 @@ int main()
       {
         //get Image from detection and display
         DetectionResultClass SessionOutput(TensorProcessor.output_queue.receive());
-        cout << "Detection Score of id: " << SessionOutput.GetDetections()[0].score << " " << MobilenetV2.GetStringFromClass(SessionOutput.GetDetections()[0].detclass) << " at TopLeft Postion: " << SessionOutput.GetDetections()[0].BoxTopLeft.x << "," << SessionOutput.GetDetections()[0].BoxTopLeft.y << "\n";
+        cout << "Detection Score of ID 0: " << SessionOutput.GetDetections()[0].score << " for " << MobilenetV2->GetStringFromClass(SessionOutput.GetDetections()[0].detclass) << " at TopLeft Postion: " << SessionOutput.GetDetections()[0].BoxTopLeft.x << "," << SessionOutput.GetDetections()[0].BoxTopLeft.y << "\n";
 
         char buffer[100];
         for (DetectionClass d : SessionOutput.GetDetections())
@@ -102,7 +106,7 @@ int main()
           {
             rectangle(SessionOutput.GetImage(), d.BoxTopLeft, d.BoxBottomRigth, Scalar(0, 255, 0), 1, 8, 0);
 
-            snprintf(buffer, 100, "%s %d%%", MobilenetV2.GetStringFromClass(d.detclass).c_str(), (int)(d.score * 100));
+            snprintf(buffer, 100, "%s %d%%", MobilenetV2->GetStringFromClass(d.detclass).c_str(), (int)(d.score * 100));
 
             putText(SessionOutput.GetImage(),
                     buffer,
