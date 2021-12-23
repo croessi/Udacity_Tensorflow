@@ -18,6 +18,8 @@
 #include <opencv2/highgui.hpp>
 
 #include "ReadClassesToLabels.h"
+#include "MessageQueue.h"
+#include "MessageQueue.cpp"
 
 using namespace std;
 using namespace cv;
@@ -162,46 +164,6 @@ public:
   bool DetectionDone = false;
 };
 
-template <class T>
-class MessageQueue
-{
-public:
-  T receive()
-  {
-    // lock
-    std::unique_lock<std::mutex> uLock(_mutex);
-    _cond.wait(uLock, [this]
-               { return !_messages.empty(); });
-
-    // remove last element
-    T message = std::move(_messages.back());
-    _messages.pop_back();
-
-    return message;
-  }
-
-  void send(T &&message)
-  {
-    // lock
-    std::lock_guard<std::mutex> uLock(_mutex);
-
-    // add vector to queue
-    _messages.emplace_back(std::move(message));
-    _cond.notify_one();
-  }
-
-  int GetSize()
-  {
-    // lock
-    std::lock_guard<std::mutex> uLock(_mutex);
-    return _messages.size();
-  }
-
-private:
-  std::mutex _mutex;
-  std::condition_variable _cond;
-  std::deque<T> _messages;
-};
 
 class TensorProcessorClass
 {
