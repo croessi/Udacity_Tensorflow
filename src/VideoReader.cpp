@@ -27,7 +27,7 @@ void VideoReader::FrameReadLoop()
     {
 
         //only cpature mor frames if buffer runs low
-        if (_frameBuffer.size() < 5)
+        if (_frameBuffer.size() < 3)
         {
             lck.unlock();
 

@@ -71,12 +71,20 @@ public:
   string GetDetectorName() override { return "MobilenetV2Class"; }
 };
 
-struct DetectionClass
+struct Detection_t
 {
   float score;
   int detclass;
   Point2d BoxTopLeft;
   Point2d BoxBottomRigth;
+};
+
+struct BoundingBox_t
+{
+  float y1;
+  float x1;
+  float y2;
+  float x2;
 };
 
 class DetectionResultClass
@@ -87,13 +95,13 @@ private:
   mutex _mtx;
 
 protected:
-  vector<DetectionClass> _detections;
+  vector<Detection_t> _detections;
 
   friend TensorProcessorClass; //make it friend to allow acess from Processor Class to Detections (but not other classes)
 
 public:
   const Mat &GetImage() { return *_image; }
-  const vector<DetectionClass> &GetDetections() const { return _detections; }
+  const vector<Detection_t> &GetDetections() const { return _detections; }
 
   DetectionResultClass(unique_ptr<Mat> Image) : _image(move(Image)){};
 
@@ -193,14 +201,6 @@ private:
   std::mutex _mutex;
   std::condition_variable _cond;
   std::deque<T> _messages;
-};
-
-struct BoundingBox_t
-{
-  float y1;
-  float x1;
-  float y2;
-  float x2;
 };
 
 class TensorProcessorClass

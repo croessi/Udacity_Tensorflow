@@ -98,7 +98,7 @@ int main()
         cout << "Detection Score of ID 0: " << SessionOutput.GetDetections()[0].score << " for " << MobilenetV2->GetStringFromClass(SessionOutput.GetDetections()[0].detclass) << " at TopLeft Postion: " << SessionOutput.GetDetections()[0].BoxTopLeft.x << "," << SessionOutput.GetDetections()[0].BoxTopLeft.y << "\n";
 
         char buffer[100];
-        for (DetectionClass d : SessionOutput.GetDetections())
+        for (Detection_t d : SessionOutput.GetDetections())
         {
           float boxwidth = (d.BoxBottomRigth.x - d.BoxTopLeft.x) / (float)SessionOutput.GetImage().size[1];
 

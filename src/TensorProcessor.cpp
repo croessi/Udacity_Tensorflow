@@ -93,6 +93,7 @@ void TensorProcessorClass::SessionRunLoop()
     //wait for empty detection to be received
     DetectionResultClass SessionResult = input_queue.receive();
 
+    //empty frame --> cleanup and exit thread
     if (SessionResult.GetImage().size[0] == 0 || SessionResult.GetImage().size[1] == 0)
     {
       free(InputValues);
@@ -128,7 +129,7 @@ void TensorProcessorClass::SessionRunLoop()
     int num_detections = *(float *)(TF_TensorData(OutputValues[5]));
     for (int i = 0; i < num_detections; i++)
     {
-      DetectionClass Detection;
+      Detection_t Detection;
       Detection.score = ((float *)TF_TensorData(OutputValues[4]))[i];
       Detection.detclass = ((float *)TF_TensorData(OutputValues[2]))[i];
 
