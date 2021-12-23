@@ -1,21 +1,21 @@
 # Udacity_Tensorflow
 
-This program asynchronously reads in video frames via Opencv / FFMPEG and sends it to a second thread with a tensorflow instance based on the SSD Mobilenet V2 Object detection model (https://tfhub.dev/tensorflow/ssd_mobilenet_v2/2) and performs detection. Afterwards the Result is returned to the main thread and displayed with bounding boxes.
-The program uses the tensorflwo C API to be lihtweigth and allowing precompiled sources from https://www.tensorflow.org/install/lang_c
+This program asynchronously reads in video frames via Opencv / FFMPEG and sends it to a second thread with a tensorflow instance based on the SSD Mobilenet V2 Object detection model (https://tfhub.dev/tensorflow/ssd_mobilenet_v2/2) and performs detection. Afterwards the result is returned to the main thread and displayed with bounding boxes.
+To be lightweight and allowing precompiled sources the program uses the tensorflow C API from https://www.tensorflow.org/install/lang_c.
 
 ![Udacity-Tensorflow](https://user-images.githubusercontent.com/87674139/147240437-e9ddbf63-6ceb-4b1c-b85e-5bf9bb60f0aa.png)
 
-Features
-- The frame reader thread always tries to fill a frambuffer with the next 3 frames.
+### Features
+- The frame reader thread fills a framebuffer asynchronously with the next 3 frames.
 - The main loop displays a new frame every 30msec
-- The CNN is only instanciated once and then fed conecutively
-- As soon as the detector is done, a new frame is moved to the detcor thread instance (hence not displayed until detrction is through)
+- The CNN is only instantiated once and then fed consecutively
+- As soon as the detector is done, a new frame is moved to the detector thread instance (hence not displayed until detection is through)
 - The detector results are displayed in a secondary window
-- Easy switch to other pre-trained models from TensorHub
+- Easy switching to other pre-trained models from TensorHub possible
 
 
 # Installation
-### Prerequistes
+### Prerequisites
 - Tested on Ubuntu 20.04
 ```bash
 sudo apt install g++
@@ -46,11 +46,11 @@ sudo ldconfig /usr/local/lib
 
 ### Sources
 - **main.cpp**
-  - detects if display is availble - if not no CV Windows are created 
-  - main loop instanciating the VideoReader, a Detector and a TensorProcessor Object and starts the corresponding threads
+  - detects if display is available - if not no CV Windows are created 
+  - main loop instantiating the VideoReader, a Detector and a TensorProcessor Object and starts the corresponding threads
   - while loop to
    - read frames
-   - creates snew DetectionResult Object as soon as the current detection is done and moves the current frame into the new object which is then moved to the TensorProcessor thread for detection   
+   - creates a new DetectionResult Object as soon as the current detection is done and moves the current frame into the new object which is then moved to the TensorProcessor thread for detection   
     - code to display outputs
  
 - **ReadClassesToLabels.cpp/h**
@@ -66,8 +66,8 @@ sudo ldconfig /usr/local/lib
 - **VideoReader.cpp/h**
   - **VideoReaderClass** accepting a filename as input - decode is doing with OpenCV//FMPEG
    - Methods to Start and Stop the Grabber thread
-   - Grabber is always tryeing to keep 3 frames in buffer 
+   - Grabber fetches 3 frames and stores them in the framebuffer 
    
 # Know Issues
-- [ ] no suitable usa case found to use promise and future to pass data from a worker thread to a parent thread
+- [ ] no suitable use case found to use promise and future to pass data from a worker thread to a parent thread
 - [ ] pointers and mallocs from tensorflow C API to be replaced with smart pointers and vectors - did not work at the first try
