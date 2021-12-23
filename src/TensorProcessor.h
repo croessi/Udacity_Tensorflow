@@ -190,6 +190,7 @@ private:
   shared_ptr<DetectorClass> _detector;
   thread _detectorThread;
 
+
 };
 
 #endif
