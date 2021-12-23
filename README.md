@@ -69,5 +69,5 @@ sudo ldconfig /usr/local/lib
    - Grabber is always tryeing to keep 3 frames in buffer 
    
 # Know Issues
-- [ ] no suitable usa case found to use promise and future to pass data from a worker thread to a parent thread in the project code.
-- [ ] pointers and mallocs from tensorflow C API to be replaced with smart pointers and vectors - did not work in the first try
+- [ ] no suitable usa case found to use promise and future to pass data from a worker thread to a parent thread
+- [ ] pointers and mallocs from tensorflow C API to be replaced with smart pointers and vectors - did not work at the first try
