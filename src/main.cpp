@@ -29,7 +29,7 @@ int main()
   haveDisplay = (val != NULL);
 
   //create instance of video reader
-  VideoReader Reader("/home/vscode/Udacity_Tensorflow/output.mp4");
+  VideoReader Reader("../output.mp4");
 
   Reader.StartGrabberThread();
 
