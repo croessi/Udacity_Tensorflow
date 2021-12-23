@@ -426,3 +426,4 @@ build/Udacity-Tensorflow
 build/CMakeCache.txt
 build/CPackSourceConfig.cmake
 build/CMakeFiles/TargetDirectories.txt
+.vscode/settings.json

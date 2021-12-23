@@ -10,6 +10,6 @@
 
 using namespace std;
 
-map<int, string> ReadClasses2Labels(string filename);
+map<int, string> ReadClasses2Labels(string &filename);
 
 #endif

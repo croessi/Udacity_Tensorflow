@@ -1,6 +1,6 @@
 #include "ReadClassesToLabels.h"
 
-map<int, string> ReadClasses2Labels(string filename)
+map<int, string> ReadClasses2Labels(string &filename)
 {
     map<int, string> ret;
 

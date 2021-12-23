@@ -9,6 +9,7 @@
 #include <opencv2/highgui.hpp>
 
 #include <iostream>
+#include <future>
 
 #include "VideoReader.h"
 #include "TensorProcessor.h"
@@ -21,12 +22,34 @@ const float boxwidth_threshold = 0.5; //maximum size of boxes to filter out huge
 
 bool haveDisplay = false;
 
+void ReturnMobilenetV2(promise<shared_ptr<MobilenetV2Class>> &&promMobilenet, string PathToModel, string PathToLabels)
+{
+  shared_ptr<MobilenetV2Class> ret = make_shared<MobilenetV2Class>(PathToModel, PathToLabels);
+  promMobilenet.set_value(ret);
+}
+
+void test(promise<int> &&promMobilenet, string &PathToModel, string &PathToLabels)
+{
+
+  promMobilenet.set_value(5);
+}
+
+
 int main()
 {
 
   //detect display
-  char * val = getenv("DISPLAY");
+  char *val = getenv("DISPLAY");
   haveDisplay = (val != NULL);
+
+  //create Detector Instance of ssd_mobilenet_v2 via separate thread
+  promise<shared_ptr<MobilenetV2Class>> promMobilenet;
+  future<shared_ptr<MobilenetV2Class>> futMobilenet = promMobilenet.get_future();
+
+  String PathToModel = "../ssd_mobilenet_v2";
+  string PathToLabels = PathToModel + "/" + "mscoco_label_map.pbtxt";
+  thread MobilenetThread(ReturnMobilenetV2, move(promMobilenet),PathToModel,PathToLabels);
+
 
   //create instance of video reader
   VideoReader Reader("../output.mp4");
@@ -36,8 +59,9 @@ int main()
   //give thread som tme to instanciate
   std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
-  //create Detector Instance of ssd_mobilenet_v2
-  shared_ptr<MobilenetV2Class> MobilenetV2 = make_shared<MobilenetV2Class>("../ssd_mobilenet_v2");
+  //get Detector Objet from thread
+  shared_ptr<MobilenetV2Class> MobilenetV2 = futMobilenet.get();
+  MobilenetThread.join();
 
   //load Model into processor
   TensorProcessorClass TensorProcessor(MobilenetV2);

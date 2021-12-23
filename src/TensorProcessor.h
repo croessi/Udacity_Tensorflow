@@ -65,7 +65,7 @@ private:
 class MobilenetV2Class : public DetectorClass
 {
 public:
-  MobilenetV2Class(string PathToModel) : DetectorClass("serving_default_input_tensor", 1, "StatefulPartitionedCall", 8, PathToModel, ReadClasses2Labels(PathToModel + "/" + "mscoco_label_map.pbtxt")){};
+  MobilenetV2Class(string &PathToModel, string &PathToLabel) : DetectorClass("serving_default_input_tensor", 1, "StatefulPartitionedCall", 8, PathToModel, ReadClasses2Labels(PathToLabel)){};
   ~MobilenetV2Class(){};
 
   string GetDetectorName() override { return "MobilenetV2Class"; }
