@@ -69,7 +69,7 @@ sudo ldconfig /usr/local/lib
    - Grabber fetches 3 frames and stores them in the framebuffer 
    
 # Know Issues
-- [ ] no suitable use case found to use promise and future to pass data from a worker thread to a parent thread
+- [x] no suitable use case found to use promise and future to pass data from a worker thread to a parent thread
 - [ ] pointers and mallocs from tensorflow C API to be replaced with smart pointers and vectors - did not work at the first try
 
 # Rubric points
