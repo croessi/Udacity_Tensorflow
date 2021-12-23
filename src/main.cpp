@@ -7,7 +7,6 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui.hpp>
-#include <X11/Xlib.h>
 
 #include <iostream>
 
@@ -26,10 +25,8 @@ int main()
 {
 
   //detect display
-  Display *disp(XOpenDisplay(NULL));
-  haveDisplay = XOpenDisplay(NULL);
-  if (haveDisplay)
-    XCloseDisplay(disp);
+  char * val = getenv("DISPLAY");
+  haveDisplay = (val != NULL);
 
   //create instance of video reader
   VideoReader Reader("/home/vscode/Udacity_Tensorflow/output.mp4");
