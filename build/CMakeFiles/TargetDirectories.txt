@@ -1,5 +1,0 @@
-/home/vscode/Udacity_Tensorflow/build/CMakeFiles/edit_cache.dir
-/home/vscode/Udacity_Tensorflow/build/CMakeFiles/package_source.dir
-/home/vscode/Udacity_Tensorflow/build/CMakeFiles/rebuild_cache.dir
-/home/vscode/Udacity_Tensorflow/build/CMakeFiles/package.dir
-/home/vscode/Udacity_Tensorflow/build/CMakeFiles/Udacity-Tensorflow.dir
