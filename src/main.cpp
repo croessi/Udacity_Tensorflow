@@ -24,19 +24,6 @@ const float boxwidth_threshold = 0.5; //maximum size of boxes to filter out huge
 
 bool haveDisplay = false;
 
-void ReturnMobilenetV2(promise<shared_ptr<MobilenetV2Class>> &&promMobilenet, string PathToModel, string PathToLabels)
-{
-  shared_ptr<MobilenetV2Class> ret = make_shared<MobilenetV2Class>(PathToModel, PathToLabels);
-  promMobilenet.set_value(ret);
-}
-
-void test(promise<int> &&promMobilenet, string &PathToModel, string &PathToLabels)
-{
-
-  promMobilenet.set_value(5);
-}
-
-
 int main()
 {
 
@@ -45,12 +32,16 @@ int main()
   haveDisplay = (val != NULL);
 
   //create Detector Instance of ssd_mobilenet_v2 via separate thread
-  promise<shared_ptr<MobilenetV2Class>> promMobilenet;
-  future<shared_ptr<MobilenetV2Class>> futMobilenet = promMobilenet.get_future();
+  //promise<shared_ptr<MobilenetV2Class>> promMobilenet;
+  //future<shared_ptr<MobilenetV2Class>> futMobilenet = promMobilenet.get_future();
 
   String PathToModel = "../ssd_mobilenet_v2";
   string PathToLabels = PathToModel + "/" + "mscoco_label_map.pbtxt";
-  thread MobilenetThread(ReturnMobilenetV2, move(promMobilenet),PathToModel,PathToLabels);
+
+   //get Detector Objet from thread
+  shared_ptr<MobilenetV2Class> MobilenetV2 = make_shared<MobilenetV2Class>(PathToModel);
+ 
+  //thread MobilenetThread(ReturnMobilenetV2, move(promMobilenet),PathToModel,PathToLabels);
 
 
   //create instance of video reader
@@ -61,9 +52,7 @@ int main()
   //give thread som tme to instanciate
   std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
-  //get Detector Objet from thread
-  shared_ptr<MobilenetV2Class> MobilenetV2 = futMobilenet.get();
-  MobilenetThread.join();
+
 
   //load Model into processor
   TensorProcessorClass TensorProcessor(MobilenetV2);
@@ -118,7 +107,7 @@ int main()
       {
         //get Image from detection and display
         DetectionResultClass SessionOutput(TensorProcessor.output_queue.receive());
-        cout << "Detection Score of ID 0: " << SessionOutput.GetDetections()[0].score << " for " << MobilenetV2->GetStringFromClass(SessionOutput.GetDetections()[0].detclass) << " at TopLeft Postion: " << SessionOutput.GetDetections()[0].BoxTopLeft.x << "," << SessionOutput.GetDetections()[0].BoxTopLeft.y << "\n";
+        cout << "Detection Score of ID 0: " << SessionOutput.GetDetections()[0].score << " for " << SessionOutput.GetDetections()[0].ClassName << " at TopLeft Postion: " << SessionOutput.GetDetections()[0].BoxTopLeft.x << "," << SessionOutput.GetDetections()[0].BoxTopLeft.y << "\n";
 
         char buffer[100];
         for (Detection_t d : SessionOutput.GetDetections())
@@ -128,8 +117,9 @@ int main()
           if (d.score > display_threshold && boxwidth < boxwidth_threshold)
           {
             rectangle(SessionOutput.GetImage(), d.BoxTopLeft, d.BoxBottomRigth, Scalar(0, 255, 0), 1, 8, 0);
+            
 
-            snprintf(buffer, 100, "%s %d%%", MobilenetV2->GetStringFromClass(d.detclass).c_str(), (int)(d.score * 100));
+            snprintf(buffer, 100, "%s %d%%", d.ClassName.c_str(), (int)(d.score * 100));
 
             putText(SessionOutput.GetImage(),
                     buffer,
