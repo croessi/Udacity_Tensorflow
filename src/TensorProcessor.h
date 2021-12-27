@@ -56,8 +56,6 @@ private:
 protected:
   vector<Detection_t> _detections;
 
-  //friend TensorProcessorClass; //make it friend to allow acess from Processor Class to Detections (but not other classes)
-
 public:
   const Mat &GetImage() { return *_image; }
   const vector<Detection_t> &GetDetections() const { return _detections; }
@@ -126,15 +124,7 @@ class TensorDescription
 {
 
 public:
-  //TensorDescription() : Tag(""), Type(TF_FLOAT), ID(0), dims(0),channel(0){};
   TensorDescription() = delete;
-  /*TensorDescription(const string tag, TF_DataType type, const int id, const vector<int64_t> Dims) : Tag(tag),
-                                                                                                    Type(type),
-                                                                                                    ID(id),
-                                                                                                    dims(dims),
-                                                                                                    channel(0),
-                                                                                                    Width(-1),
-                                                                                                    Height(-1){};*/
   TensorDescription(const string tag, TF_DataType type, const int id, const vector<int64_t> Dims, int chan = 0) : Tag(tag),
                                                                                                                   Type(type),
                                                                                                                   ID(id),
@@ -152,66 +142,6 @@ public:
   const TF_DataType Type;
   int Width;
   int Height;
-
-  /*
-  //move assign
-  TensorDescription &operator=(TensorDescription &&source):Tag(source.Tag)
-  {
-    if (this == &source)
-      return *this;
-
-    Tag = source.Tag;
-    Type = source.Type;
-    ID = source.ID;
-
-    source.ID = -1;
-    source.Tag = "";
-    return *this;
-  }
-  //copy assignment operator
-  TensorDescription &operator=(TensorDescription &source)
-  {
-    if (this == &source)
-      return *this;
-
-    Tag = source.Tag;
-    Type = source.Type;
-    ID = source.ID;
-
-    source.ID = -1;
-    source.Tag = "";
-    return *this;
-  }
-
-  //move assign
-  TensorDescription &operator=(TensorDescription &&source)
-  {
-    if (this == &source)
-      return *this;
-
-    Tag = source.Tag;
-    Type = source.Type;
-    ID = source.ID;
-
-    source.ID = -1;
-    source.Tag = "";
-    return *this;
-  }
-  //copy assignment operator
-  TensorDescription &operator=(TensorDescription &source)
-  {
-    if (this == &source)
-      return *this;
-
-    Tag = source.Tag;
-    Type = source.Type;
-    ID = source.ID;
-
-    source.ID = -1;
-    source.Tag = "";
-    return *this;
-  }
-  */
 };
 
 // generic Detector Class
@@ -226,21 +156,13 @@ public:
   ~DetectorClass(){};
 
   virtual const string GetDetectorName() = 0;
-  virtual unique_ptr<char> ConvertImage(const Mat &OpenCVImage) = 0;
-
-  //const int _numInputs =1;
-  //const string _nameOfOutputs;
-  //const string _nameOfInputs;
-  const string _pathToModel;
-
-  //void AddOutputTensorDescription(TensorDescription desc) { _outputTensorDescriptions.emplace_back(desc); }
-  //void SetInputTensorDescription(TensorDescription desc) { _inputTensorDescription = desc; }
-
-  virtual DetectionResultClass ProcessResults(DetectionResultClass &&SessionResult, TF_Tensor **OutputValues, int width, int heigth) = 0;
-
-  virtual void SetImageSize(const int w, const int h) = 0;
   virtual const int GetImageWidth() = 0;
   virtual const int GetImageHeigth() = 0;
+  virtual void SetImageSize(const int w, const int h) = 0;
+  virtual unique_ptr<Mat> ConvertImage(const Mat &OpenCVImage) = 0;
+  virtual DetectionResultClass ProcessResults(DetectionResultClass &&SessionResult, TF_Tensor **OutputValues, int width, int heigth) = 0;
+
+  const string _pathToModel;
 
   vector<TensorDescription> &GetOutputTensorDescriptions() { return _outputTensorDescriptions; }
   const TensorDescription &GetInputTensorDescription() { return _inputTensorDescription; }
@@ -256,6 +178,7 @@ protected:
 // https://tfhub.dev/google/openimages_v4/ssd/mobilenet_v2/1
 class MobilenetV2_OIv4Class : public DetectorClass
 {
+
 public:
   const string tag_set = "";
   const string signature_def = "default";
@@ -287,11 +210,11 @@ public:
   };
   ~MobilenetV2_OIv4Class(){};
 
-  unique_ptr<char> ConvertImage(const Mat &OpenCVImage) override
+  unique_ptr<Mat> ConvertImage(const Mat &OpenCVImage) override
   {
     Mat img2;
     OpenCVImage.convertTo(img2, CV_32FC3, 1.f / 255);
-    return (make_unique<char>(*img2.data));
+    return (make_unique<Mat>(img2));
   }
 
   DetectionResultClass ProcessResults(DetectionResultClass &&SessionResult, TF_Tensor **OutputValues, int width, int heigth) override
@@ -357,9 +280,11 @@ public:
     return "MobilenetV2Class";
   }
 
-  unique_ptr<char> ConvertImage(const Mat &OpenCVImage) override
+  unique_ptr<Mat> ConvertImage(const Mat &OpenCVImage) override
   {
-    return (make_unique<char>(*OpenCVImage.data));
+    Mat cp;
+    OpenCVImage.copyTo(cp);
+    return (make_unique<Mat>(cp));
   }
 
   DetectionResultClass ProcessResults(DetectionResultClass &&SessionResult, TF_Tensor **OutputValues, int width, int heigth) override

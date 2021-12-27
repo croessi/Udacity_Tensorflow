@@ -141,8 +141,8 @@ int main()
     }
     else
     {
-      if (haveDisplay)
-        imshow("Frame", *frame);
+      //if (haveDisplay)
+      //  imshow("Frame", *frame);
       cout << "Frame Number " << c1 << " is displayed \n";
       waitKey(30);
     }
