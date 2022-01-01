@@ -27,14 +27,26 @@ TensorProcessorClass::TensorProcessorClass(shared_ptr<DetectorClass> Detector) :
   _runOpts = nullptr;
 
   //********* Read model
-  const char *tags = "serve"; // default model serving tag; can change in future
-  int ntags = 1;
+  const char *tags = _detector->tag.c_str(); // default model serving tag; can change in future
 
-  _session = TF_LoadSessionFromSavedModel(_sessionOpts, _runOpts, _detector->_pathToModel.c_str(), &tags, ntags, _graph, NULL, _status);
-  if (TF_GetCode(_status) == TF_OK)
-    cout << "Loading Model " << _detector->GetDetectorName() << " from: " << _detector->_pathToModel << " was successfull\n";
-  else
-    cout << "Loading Model " << _detector->GetDetectorName() << " from: " << _detector->_pathToModel << " FAILED!!!!!" << TF_Message(_status);
+  //char i = 0;
+  //while (i < 256)
+  //{
+
+    //const char tags1[] = {i, 0x00};
+    //const char *tags = &tags1[0];
+    //const char *tags = """";
+    int ntags = 1;
+    //i++;
+    _session = TF_LoadSessionFromSavedModel(_sessionOpts, _runOpts, _detector->_pathToModel.c_str(), &tags, ntags, _graph, NULL, _status);
+    if (TF_GetCode(_status) == TF_OK)
+    {
+      cout << "Loading Model " << _detector->GetDetectorName() << " from: " << _detector->_pathToModel << " was successfull\n";
+      //break;
+    }
+    else
+      cout << "Loading Model " << _detector->GetDetectorName() << " from: " << _detector->_pathToModel << " FAILED!!!!!" << TF_Message(_status);
+  //}
 
   //****** Get input tensor
   _input = (TF_Output *)malloc(sizeof(TF_Output) * _detector->GetInputTensorSize());
@@ -118,8 +130,10 @@ void TensorProcessorClass::SessionRunLoop()
 
     //Run the Session
     auto t1 = chrono::high_resolution_clock::now();
-    
+
     TF_SessionRun(_session, NULL, _input, InputValues, _detector->GetInputTensorSize(), _output, OutputValues, _detector->GetOutputTensorDescriptions().size(), NULL, 0, NULL, _status);
+
+    InputImage->release();
     
     auto t2 = chrono::high_resolution_clock::now();
     auto ms_int = chrono::duration_cast<chrono::milliseconds>(t2 - t1);

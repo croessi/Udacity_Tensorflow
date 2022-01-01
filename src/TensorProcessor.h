@@ -148,16 +148,16 @@ public:
 class DetectorClass
 {
 protected:
-  DetectorClass(string PtoModel, TensorDescription inputDesc) : _pathToModel(PtoModel),
-                                                                _inputTensorDescription(inputDesc){};
+  DetectorClass(string PtoModel, const string Tag, const string Signature, TensorDescription inputDesc) : _pathToModel(PtoModel),
+                                                                                                          _inputTensorDescription(inputDesc),
+                                                                                                          tag(Tag),
+                                                                                                          signature(Signature){};
 
 public:
   DetectorClass() = delete;
   ~DetectorClass(){};
 
   virtual const string GetDetectorName() = 0;
-  virtual const int GetImageWidth() = 0;
-  virtual const int GetImageHeigth() = 0;
   virtual void SetImageSize(const int w, const int h) = 0;
   virtual unique_ptr<Mat> ConvertImage(const Mat &OpenCVImage) = 0;
   virtual DetectionResultClass ProcessResults(DetectionResultClass &&SessionResult, TF_Tensor **OutputValues, int width, int heigth) = 0;
@@ -166,8 +166,13 @@ public:
 
   vector<TensorDescription> &GetOutputTensorDescriptions() { return _outputTensorDescriptions; }
   const TensorDescription &GetInputTensorDescription() { return _inputTensorDescription; }
+  const int GetImageWidth() { return _inputTensorDescription.Width; }
+  const int GetImageHeigth() { return _inputTensorDescription.Height; }
 
   const int GetInputTensorSize() { return 1; }
+
+  const string tag;
+  const string signature;
 
 protected:
   vector<TensorDescription> _outputTensorDescriptions;
@@ -188,8 +193,9 @@ public:
     return "SSD+MobileNetV2 network trained on Open Images V4";
   }
 
-  MobilenetV2_OIv4Class(string &PathToModel) : DetectorClass(PathToModel, TensorDescription("input_tensor", TF_FLOAT, 0, {-1, -1, 3}))
+  MobilenetV2_OIv4Class(string &PathToModel) : DetectorClass(PathToModel," ","default", TensorDescription("input_tensor", TF_FLOAT, 0, {-1, -1, 3}))
   {
+    //parameters can bea read out via gogle colar with !saved_model_cli show --dir {'Model'}  --tag_set serve --signature_def serving_default
     //input Tensor is already created at construction - outputs later
     //create output Tensors and put their descrition into a vector for tensor processor to init
     int i = 0;
@@ -210,6 +216,13 @@ public:
   };
   ~MobilenetV2_OIv4Class(){};
 
+  void SetImageSize(const int w, const int h)
+  {
+    _inputTensorDescription.Width = w;
+    _inputTensorDescription.Height = h;
+    _inputTensorDescription.dims = {h, w, 3};
+  }
+
   unique_ptr<Mat> ConvertImage(const Mat &OpenCVImage) override
   {
     Mat img2;
@@ -229,9 +242,10 @@ public:
 class MobilenetV2Class : public DetectorClass
 {
 public:
-  MobilenetV2Class(string &PathToModel) : DetectorClass(PathToModel, TensorDescription("serving_default_input_tensor", TF_UINT8, 0, {1, -1, -1, 3}))
+  MobilenetV2Class(string &PathToModel) : DetectorClass(PathToModel, "serve", "serving_default", TensorDescription("serving_default_input_tensor", TF_UINT8, 0, {1, -1, -1, 3}))
   {
 
+    //parameters can bea read out via gogle colar with !saved_model_cli show --dir {'Model'}  --tag_set serve --signature_def serving_default
     //create output Tensors and put their descrition into a vector for tensor processor to init
     int i = 0;
 
@@ -271,9 +285,6 @@ public:
     _inputTensorDescription.Height = h;
     _inputTensorDescription.dims = {1, h, w, 3};
   }
-
-  const int GetImageWidth() { return _inputTensorDescription.Width; }
-  const int GetImageHeigth() { return _inputTensorDescription.Height; }
 
   const string GetDetectorName() override
   {
