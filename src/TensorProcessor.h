@@ -58,6 +58,7 @@ protected:
 
 public:
   const Mat &GetImage() { return *_image; }
+  unique_ptr<Mat> MoveImage() { return move(_image); }
   const vector<Detection_t> &GetDetections() const { return _detections; }
 
   DetectionResultClass(unique_ptr<Mat> Image) : _image(move(Image)){};

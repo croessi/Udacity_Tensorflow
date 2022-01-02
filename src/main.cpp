@@ -9,12 +9,18 @@
 #include <opencv2/highgui.hpp>
 
 #include <iostream>
+#include <iomanip>
 #include <future>
 
+#include <mqtt/client.h>
+#include <sstream>
+
 #include "VideoReader.h"
+#include "VideoServer.h"
 #include "TensorProcessor.h"
 #include "MessageQueue.h"
 #include "MessageQueue.cpp" //neded to avoid linker issues
+#include "Statistics.h"
 
 using namespace cv;
 using namespace std;
@@ -24,33 +30,25 @@ const float boxwidth_threshold = 0.5; //maximum size of boxes to filter out huge
 
 bool haveDisplay = false;
 
-#include <gst/gst.h>
+/*
+std::string gst_pipe_in = "rtspsrc location=rtsp://admin:passwd@192.168.1.30:554/cam/realmonitor?channel=1&subtype=0 ! rtph264depay ! h264parse ! v4l2h264dec ! autovideoconvert ! appsink"; cv::VideoCapture capture(gst_pipe_in,cv::CAP_GSTREAMER);
 
-#include "../gst/rtsp-server/rtsp-server.h"
+The VideoWriter Gstreamer pipe for writing the processed video to a file:
 
-#define DEFAULT_RTSP_PORT "8554"
-#define DEFAULT_DISABLE_RTCP FALSE
-
-static char *port = (char *) DEFAULT_RTSP_PORT;
-static gboolean disable_rtcp = DEFAULT_DISABLE_RTCP;
-
-static GOptionEntry entries[] = {
-  {"port", 'p', 0, G_OPTION_ARG_STRING, &port,
-      "Port to listen on (default: " DEFAULT_RTSP_PORT ")", "PORT"},
-  {"disable-rtcp", '\0', 0, G_OPTION_ARG_NONE, &disable_rtcp,
-      "Whether RTCP should be disabled (default false)", NULL},
-  {NULL}
-};
-
-
-
+std::string motion_writer_pipe = "appsrc ! autovideoconvert ! v4l2h264enc ! h264parse ! mp4mux ! filesink location = " + savedMotionVideoFullPath; cv::VideoWriter motion_writer = cv::VideoWriter(motion_writer_pipe,cv::CAP_GSTREAMER,frames_per_second,frame_size,true);
+*/
 int main (int argc, char *argv[])
 { 
+  mqtt::message_ptr msg{mqtt::message::create("DetectorPi", "test")};
+  
   setenv("OPENCV_FFMPEG_CAPTURE_OPTIONS", "rtsp_transport;udp", 1);
 
-  const string RTSP_URL = "rtsp://192.168.0.49:554/ch0_0.h264";
-  const float scale_factor = 0.5;
+  //const string RTSP_URL = "rtsp://192.168.0.49:554/ch0_1.h264";
+  const string RTSP_URL = "rtspsrc location=rtsp://192.168.0.49:554/ch0_1.h264 ! rtph264depay ! h264parse ! avdec_h264 ! videoconvert ! appsink";
+  
+  const float scale_factor = 1.0;
   const string dest_IP = "192.168.178.36";
+  const string TOPIC = "DetectorPi_Raw";
 
   if (argc < 4 && false)
   {
@@ -64,56 +62,67 @@ int main (int argc, char *argv[])
   char *val = getenv("DISPLAY");
   haveDisplay = (val != NULL);
 
+  /*
+
+ VideoCapture cap(RTSP_URL, CAP_GSTREAMER);
   
+  //VideoCapture cap(RTSP_URL, CAP_FFMPEG);
+  if (!cap.isOpened()) {
+      std::cout << "Cannot open RTSP stream" << std::endl;
+      return -1;
+  }
+
+  Mat rawframe,frame;
+
   VideoWriter video;
-  
 
-    VideoCapture cap(RTSP_URL, CAP_FFMPEG);
-    if (!cap.isOpened()) {
-        std::cout << "Cannot open RTSP stream" << std::endl;
-        return -1;
-    }
-  
-    Mat rawframe,frame;
-
-    int frame_count =0;
-    while (true) {
-        cap >> rawframe;
-        if (haveDisplay)
-          imshow("RTSP stream", rawframe);
-        else
+  int frame_count =0;
+  while (true) {
+      cap >> rawframe;
+      if (haveDisplay)
+        imshow("RTSP stream", rawframe);
+      else
+      {
+        if (rawframe.empty())
         {
-          if (rawframe.empty())
-          {
-            cout << "No more frames! \n";
-            return -1;
-          }
-
-           int d_width = rawframe.size[1] * scale_factor;
-           int d_height = rawframe.size[0] * scale_factor;
-
-          resize(rawframe, frame, Size(d_width,d_height));
-
-          if (frame_count %100 == 0)
-            cout << "Frame #" << frame_count << " read\n";
+          cout << "No more frames! \n";
+          return -1;
         }
-        if (waitKey(1) == 27)
-            break;
 
+          int d_width = rawframe.size[1] * scale_factor;
+          int d_height = rawframe.size[0] * scale_factor;
+
+        resize(rawframe, frame, Size(d_width,d_height));
+
+        if (frame_count %100 == 0)
+          cout << "Frame #" << frame_count << " read\n";
+      }
+      if (waitKey(1) == 27)
+          break;
+
+      if (!video.isOpened())
+      {
+        cout << "Try to open Frame Writer\n";
+        //x264enc tune=zerolatency speed-preset=ultrafast
+        //video.open("appsrc ! videoconvert ! x264enc me=hex tune=zerolatency speed-preset=ultrafast key-int-max=50 intra-refresh=true ! h264parse ! rtph264pay config-interval=5 pt=96 ! udpsink host=" + dest_IP+ " port=5000 sync=false",0, 20, frame.size(), true);
+        //video.open("appsrc ! videoconvert ! x264enc me=hex tune=zerolatency bitrate =500 speed-preset=superfast ! h264parse ! rtph264pay config-interval=5 pt=96 ! udpsink host=" + dest_IP+ " port=5000 sync=false",0, 20, frame.size(), true);
+        int fourcc =    VideoWriter::fourcc('H','2','6','4');
+        string inputPipe= argv[1] + dest_IP+ " port=5000 sync=true";
+        cout << "Input pipe: " << inputPipe << endl;
+
+        //video.open("appsrc ! videoconvert ! x264enc me=hex tune=zerolatency bitrate =500 speed-preset=superfast ! h264parse ! rtph264pay config-interval=5 pt=96 ! udpsink host=" + dest_IP+ " port=5000 sync=false",CAP_GSTREAMER,fourcc, 5, frame.size(), true);
+      
+        video.open(inputPipe ,CAP_GSTREAMER,fourcc, 5, frame.size(), true);
+        
         if (!video.isOpened())
         {
-          cout << "Try to open Frame Writer\n";
-          video.open("appsrc ! videoconvert ! x264enc tune=zerolatency bitrate=500 speed-preset=superfast ! h264parse ! rtph264pay config-interval=5 pt=96 ! udpsink host=" + dest_IP+ " port=5000 sync=false",0, 20, frame.size(), true);
-         
-          if (!video.isOpened())
-          {
-            cout << "Frame Writer not availbale!\n";
-            return -1;
-          }
+          cout << "Frame Writer not availbale!\n";
+          return -1;
         }
+      }
 
-        video.write(frame);
-        frame_count++;
+      video.write(frame);
+      frame_count++;
     }
  
     cap.release();
@@ -123,6 +132,8 @@ int main (int argc, char *argv[])
 
 
 
+*/
+  VideoWriter video;
 
   //create Detector Instance of ssd_mobilenet_v2 via separate thread
   //promise<shared_ptr<MobilenetV2Class>> promMobilenet;
@@ -139,8 +150,8 @@ int main (int argc, char *argv[])
   //shared_ptr<MobilenetV2_OIv4Class> MobilenetV2 = make_shared<MobilenetV2_OIv4Class>(PathToModel);
  
 
-  //create instance of video reader
-  VideoReader Reader("../output.mp4");
+  //create instance of video reader and pass URL of RTSP Stream
+  VideoReader Reader(RTSP_URL,scale_factor);
 
   Reader.StartGrabberThread();
 
@@ -156,6 +167,13 @@ int main (int argc, char *argv[])
   //give thread som tme to instanciate
   std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
+  //create mqtt client object
+  mqtt::client cli{"tcp://"+dest_IP+":1883", "DetectorPi"};
+
+  //create VideoServer
+  VideoServerClass VideoServer(dest_IP);
+  VideoServer.StartVideoServerThread();
+
   //frame counter
   int c1 = 0;
   while (true)
@@ -163,7 +181,7 @@ int main (int argc, char *argv[])
 
     unique_ptr<Mat> frame(move(Reader.getNextFrame()));
 
-    // Display the resulting frame - if a display and frame are available
+    // Check if Frame is empty
     if (frame->empty())
     {
       cout << "No more Frames\n";
@@ -173,6 +191,7 @@ int main (int argc, char *argv[])
       //Stop Threads
       cout << "Stopping Threads\n";
       Reader.StopGrabberThread();
+      VideoServer.StopVideoServerThread();
       TensorProcessor.StopProcessorThread();
 
       // When everything done, release the video window
@@ -203,14 +222,34 @@ int main (int argc, char *argv[])
         cout << "Detection Score of ID 0: " << SessionOutput.GetDetections()[0].score << " for " << SessionOutput.GetDetections()[0].ClassName << " at TopLeft Postion: " << SessionOutput.GetDetections()[0].BoxTopLeft.x << "," << SessionOutput.GetDetections()[0].BoxTopLeft.y << "\n";
 
         char buffer[100];
+        stringstream RawOutput;
+        stringstream NiceOutput;
+
+        StatisticsClass Statistics;
+
         for (Detection_t d : SessionOutput.GetDetections())
         {
+ 
+
           float boxwidth = (d.BoxBottomRigth.x - d.BoxTopLeft.x) / (float)SessionOutput.GetImage().size[1];
+          float boxheight = (d.BoxBottomRigth.y - d.BoxTopLeft.y) / (float)SessionOutput.GetImage().size[0];
+
+          float boxcenterX = d.BoxTopLeft.x / (float)SessionOutput.GetImage().size[1] + boxwidth * 0.5;;
+          float boxcenterY = d.BoxTopLeft.x / (float)SessionOutput.GetImage().size[0] + boxheight * 0.5;
+
+
+          //{"Timer1":{"Arm": <status>, "Time": <time>}, "Timer2":{"Arm": <status>, "Time": <time>}}
 
           if (d.score > display_threshold && boxwidth < boxwidth_threshold)
           {
+            RawOutput.setf( ios::fixed );
+            RawOutput << "Score: " << (int)(d.score*100) << "% Class: " << d.ClassName << " at: " << setprecision(2) << boxcenterX << ":" << boxcenterY << "\n";
+
+            //NiceOutput << "{\"" << d.ClassName << "\"}:{\"Score:\"" << d.score << "\"},";
+
             rectangle(SessionOutput.GetImage(), d.BoxTopLeft, d.BoxBottomRigth, Scalar(0, 255, 0), 1, 8, 0);
             
+            Statistics.Stat["d.ClassName"]++;
 
             snprintf(buffer, 100, "%s %d%%", d.ClassName.c_str(), (int)(d.score * 100));
 
@@ -222,7 +261,39 @@ int main (int argc, char *argv[])
                     cv::Scalar(255, 255, 255),
                     1, cv::LINE_AA, false);
           }
+
         }
+
+       
+          //check if we are connected to MQTT server
+          if (!cli.is_connected())
+          {
+            cout << "Not connected to Homeassistant MQTT Server -> try to connect...";
+            cli.connect();
+            if (cli.is_connected())
+              cout << "done \n";
+          }
+
+          if (cli.is_connected())
+            {
+              //truncate to max 255 signs for MQTT
+              if (RawOutput.str().size() > 250)
+              {
+                String Msg = RawOutput.str().substr(0,250);
+                mqtt::message_ptr msg{mqtt::message::create(TOPIC, Msg)};
+              }
+              else
+                mqtt::message_ptr msg{mqtt::message::create(TOPIC, RawOutput.str())};
+              
+	            cli.publish(msg);
+
+              for (auto const& x : Statistics.Stat)
+              { 
+                  if (x.second >0)
+                    std::cout << Statistics.Stat[x.first] << ':' << x.second << std::endl;
+              }
+
+            }
 
         // Display the resulting frame - if a display is available
         if (haveDisplay)
@@ -230,15 +301,49 @@ int main (int argc, char *argv[])
           imshow("DetectorResults", SessionOutput.GetImage());
           //waitKey(0);
         }
-        //SessionOutput.GetImage().release();
+
+        //send frame to Video Server
+        unique_ptr<Mat>Image(move(SessionOutput.MoveImage()));
+        VideoServer.input_queue.send(move(Image));
+
+        
+/*
+       if (!video.isOpened())
+      {
+        cout << "Try to open Frame Writer\n";
+        //x264enc tune=zerolatency speed-preset=ultrafast
+        //video.open("appsrc ! videoconvert ! x264enc me=hex tune=zerolatency speed-preset=ultrafast key-int-max=50 intra-refresh=true ! h264parse ! rtph264pay config-interval=5 pt=96 ! udpsink host=" + dest_IP+ " port=5000 sync=false",0, 20, frame.size(), true);
+        //video.open("appsrc ! videoconvert ! x264enc me=hex tune=zerolatency bitrate =500 speed-preset=superfast ! h264parse ! rtph264pay config-interval=5 pt=96 ! udpsink host=" + dest_IP+ " port=5000 sync=false",0, 20, frame.size(), true);
+        int fourcc =    VideoWriter::fourcc('H','2','6','4');
+       
+        video.open("appsrc ! videoconvert ! x264enc tune=zerolatency speed-preset=ultrafast key-int-max=2 ! h264parse ! rtph264pay config-interval=5 pt=96 ! udpsink host=" + dest_IP+ " port=5000 sync=false",CAP_GSTREAMER,fourcc, 5, Image->size(), true);
+      
+  
+        if (!video.isOpened())
+        {
+          cout << "Frame Writer not availbale!\n";
+          return -1;
+        }
       }
+
+      cout << "Frame with size: " << Image->size[0] << "to write\n";
+      video.write(*Image);
+      cout << "Done\n";
+
+*/
+      }
+      
     }
     else
     {
+      //send frame to Video Server
+      // VideoServer.input_queue.send(move(*frame));
+
       //if (haveDisplay)
       //  imshow("Frame", *frame);
+      if (c1 % 20 == 0)
       cout << "Frame Number " << c1 << " is displayed \n";
-      waitKey(90);
+      waitKey(60);
     }
     c1++;
   }

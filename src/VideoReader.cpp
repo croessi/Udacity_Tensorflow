@@ -5,6 +5,7 @@
 void VideoReader::StartGrabberThread()
 {
     _readFrameLoopThread = thread(&VideoReader::FrameReadLoop, this);
+    
 }
 
 void VideoReader::StopGrabberThread()
@@ -18,29 +19,19 @@ void VideoReader::StopGrabberThread()
 
 void VideoReader::FrameReadLoop()
 {
+
+    cout << "Frame Grabber thread started.\n";
     unique_lock<mutex> lck(_mut);
     //create cpature instance
     
-    const std::string RTSP_URL = "rtsp://192.168.0.49:554/ch0_0.h264";
-    setenv("OPENCV_FFMPEG_CAPTURE_OPTIONS", "rtsp_transport;udp", 1);
-    
-    VideoWriter video;
-    video.open("appsrc ! autovideoconvert ! omxh265enc ! matroskamux ! filesink location=test.mkv sync=false", 0, (double)20, cv::Size(1920/2, 1080/2), true);
+    if (!_cap)
+        _cap =  make_unique<VideoCapture>(_input, CAP_GSTREAMER);
 
-    if (!video.isOpened()) {
-        printf("can't create writer\n");
-    return;
-    }
-
-    if (!_cap){
-        //_cap = make_unique<VideoCapture>(_filename);
-        //_cap =  make_unique<VideoCapture>("rtsp://192.168.0.49/ch0_0.h264",CAP_FFMPEG  );
-        _cap =  make_unique<VideoCapture>(RTSP_URL, CAP_FFMPEG);
-        if (!_cap->isOpened()) {
-          std::cout << "Cannot open RTSP stream" << std::endl;
+    if (!_cap->isOpened()) {
+        std::cout << "Cannot open RTSP stream to: " << _input<< std::endl;
         return;
-        }
     }
+    
     while (true)
     {
 
@@ -64,20 +55,22 @@ void VideoReader::FrameReadLoop()
             }
 
             if (!f.empty()){
-
+                
                 //rescale
-                float scale_percent = 50;
-                int d_width = f.size[1] * scale_percent / 100;
-                int d_height = f.size[0] * scale_percent / 100;
+                if (_scalingFactor != 1.0)
+                {
+                    float scale_percent = 50;
+                    int d_width = f.size[1] * scale_percent / 100;
+                    int d_height = f.size[0] * scale_percent / 100;
 
-                Mat f_small;
-                resize (f,f_small,Size(d_width,d_height));
-                _frameBuffer.emplace(_frameBuffer.begin(), move(f_small));
-                f.release();
+                    Mat f_small;
+                    resize (f,f_small,Size(d_width,d_height));
+                    f.release();
+                    f = f_small;
+                }
 
-                //write video to file
-                  video.write(f_small);
-               
+                _frameBuffer.emplace(_frameBuffer.begin(), move(f));
+                    
             }
             else
             {
