@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
   setenv("OPENCV_FFMPEG_CAPTURE_OPTIONS", "rtsp_transport;udp", 1);
 
   //const string RTSP_URL = "rtsp://192.168.0.49:554/ch0_1.h264";
-  const string RTSP_URL = "rtspsrc location=rtsp://192.168.0.49:554/ch0_1.h264 ! rtph264depay ! h264parse ! avdec_h264 ! videoconvert ! appsink";
+  const string RTSP_URL = "rtspsrc location=rtsp://192.168.0.49:554/ch0_1.h264 ! rtph264depay ! h264parse ! avdec_h264 ! videoconvert ! appsink drop=true max-buffers=2";
 
   const float scale_factor = 1.0;
   const string dest_IP = "192.168.178.36";
@@ -151,6 +151,9 @@ int main(int argc, char *argv[])
   VideoServerClass VideoServer(dest_IP);
   VideoServer.StartVideoServerThread();
 
+  //Class to manage all results incl sending via MQTT
+  ResultHandlerClass ResultHandler(dest_IP);
+
   //give thread som tme to instanciate
   //std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
@@ -160,9 +163,6 @@ int main(int argc, char *argv[])
 
   //counter for average runtime of main loop
   chrono::milliseconds dur(20);
-
-  //Class to manage all results incl sending via MQTT
-  ResultHandlerClass ResultHandler(dest_IP);
 
   //frame counter
   int c1 = 0;
@@ -175,7 +175,7 @@ int main(int argc, char *argv[])
     if (c1 == 0)
       TensorProcessor.input_queue.sendAndClear(move(frame));
 
-    if (TensorProcessor.output_queue.GetSize() > 0)
+    if (TensorProcessor.output_queue.GetSize() > 0 && c1)
     {
       TensorProcessor.input_queue.sendAndClear(move(frame));
       DetectionResultClass SessionOutput(TensorProcessor.output_queue.receive());

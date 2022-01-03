@@ -141,6 +141,8 @@ void TensorProcessorClass::SessionRunLoop()
     auto t2 = chrono::high_resolution_clock::now();
     auto ms_int = chrono::duration_cast<chrono::milliseconds>(t2 - t1);
 
+    SessionResult.runtime = (int)ms_int.count();
+
     if (TF_GetCode(_status) == TF_OK)
       cout << "Session ran through in " << ms_int.count() << "ms\n";
     else

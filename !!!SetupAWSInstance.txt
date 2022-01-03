@@ -1,0 +1,110 @@
+sudo passwd ubuntu
+
+sudo useradd -m vscode
+
+sudo passwd vscode
+
+sudo usermod -s /bin/bash vscode
+
+
+sudo mkdir /home/vscode/.ssh
+sudo cp /home/ubuntu/.ssh/* /home/vscode/.ssh/ -R
+sudo chown vscode /home/vscode/ -R
+
+sudo cp /home/ubuntu/* /home/vscode/ -R
+sudo chown vscode /home/vscode/ -R
+
+sudo visudo  -->  vscode ALL=(ALL) NOPASSWD:ALL
+
+sudo swapoff -a
+sudo swapon --show
+sudo fallocate -l 1G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+
+sudo swapon /swapfile
+sudo nano /etc/fstab    --> /swapfile none swap sw 0 0
+sudo swapon --show
+
+sudo apt-get update
+
+
+sudo apt install g++
+
+sudo apt install gdb
+sudo apt install valgrind
+sudo apt-get install cmake
+
+###remote dekstop
+sudo apt-get install xrdp -y
+sudo apt-get install xfce4 -y
+sudo apt-get install xfce4-terminal -y
+
+add RDP Port Rule in EC2 Instance
+
+sudo nano /etc/xrdp/startwm.sh
+
+#test -x /etc/X11/Xsession && exec /etc/X11/Xsession
+#exec /bin/sh /etc/X11/Xsession
+startxfce4
+
+
+sudo apt-get clean
+sudo apt-get autoclean
+sudo apt-get autoremove
+
+df //used disk size
+
+//GSTREAMER
+sudo apt-get install gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav
+
+
+//VPN
+
+sudo apt install vpnc
+sudo nano /etc/vpnc/fritz.conf
+
+
+IPSec gateway w8mtksnqlsqnszfy.myfritz.net
+
+IKE DH Group dh2
+Perfect Forward Secrecy nopfs
+
+IPSec ID christoph.roessing
+# "key" from the Fritz!Box VPN configuration
+IPSec secret Ik0KOj9iNneSySDH
+
+NAT Traversal Mode force-natt
+
+Xauth username christoph.roessing
+Xauth password hb................
+
+start with
+sudo vpnc-connect fritz
+
+
+#Interface mode tap
+#Script /etc/vpnc/fb-script.sh
+
+
+
+
+//MQTT CLient
+
+git clone https://github.com/eclipse/paho.mqtt.c.git
+cd paho.mqtt.c
+git checkout v1.3.8
+
+cmake -Bbuild -H. -DPAHO_ENABLE_TESTING=OFF -DPAHO_BUILD_STATIC=OFF -DPAHO_WITH_SSL=OFF -DPAHO_HIGH_PERFORMANCE=ON -DPAHO_BUILD_DEB_PACKAGE=ON
+sudo cmake --build build/ --target install
+sudo ldconfig
+
+
+git clone https://github.com/eclipse/paho.mqtt.cpp
+cd paho.mqtt.cpp
+
+cmake -Bbuild -H. -DPAHO_BUILD_STATIC=OFF -DPAHO_WITH_SSL=OFF -DPAHO_HIGH_PERFORMANCE=ON -DPAHO_BUILD_DEB_PACKAGE=ON
+
+sudo cmake --build build/ --target install
+sudo ldconfig
+

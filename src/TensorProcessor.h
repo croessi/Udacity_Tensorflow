@@ -60,6 +60,7 @@ public:
   const Mat &GetImage() { return *_image; }
   unique_ptr<Mat> MoveImage() { return move(_image); }
   const vector<Detection_t> &GetDetections() const { return _detections; }
+  int runtime = 0;
 
   DetectionResultClass(unique_ptr<Mat> Image) : _image(move(Image)){};
   void AddDetection(Detection_t det) { _detections.emplace_back(det); }
@@ -70,6 +71,7 @@ public:
     _image = move(source._image);
     _num_detections = source._num_detections;
     _detections = source._detections;
+    runtime = source.runtime;
     //do not move mutextes _mtx (move(source._mtx));
     source._image = nullptr;
   }
@@ -79,6 +81,7 @@ public:
   {
     _num_detections = source._num_detections;
     _detections = source._detections;
+    runtime = source.runtime;
     //do not copy mutextes  _mtx = source._mtx;
 
     //alocate memory and copy image data
@@ -95,6 +98,8 @@ public:
       return *this;
 
     _image = move(source._image);
+    runtime = source.runtime;
+    _num_detections = source._num_detections;
 
     source._image = nullptr;
     return *this;
@@ -102,6 +107,8 @@ public:
   //copy assignment operator
   DetectionResultClass &operator=(DetectionResultClass &source)
   {
+        runtime = source.runtime;
+    _num_detections = source._num_detections;
     if (this == &source)
       return *this;
 

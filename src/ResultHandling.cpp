@@ -3,10 +3,12 @@
 void ResultHandlerClass::ResultHandling(DetectionResultClass &SessionOutput, float display_threshold, float boxwidth_threshold)
 {
     char buffer[100];
-    stringstream RawOutput;
+    //stringstream RawOutput;
     stringstream NiceOutput;
+    NiceOutput << "{";
 
     StatisticsClass Statistics;
+     int NumObjects = 0;
 
     for (Detection_t d : SessionOutput.GetDetections())
     {
@@ -20,11 +22,14 @@ void ResultHandlerClass::ResultHandling(DetectionResultClass &SessionOutput, flo
         //{"Timer1":{"Arm": <status>, "Time": <time>}, "Timer2":{"Arm": <status>, "Time": <time>}}
 
         if (d.score > display_threshold && boxwidth < boxwidth_threshold)
-        {
-            RawOutput.setf(ios::fixed);
-            RawOutput << "Score: " << (int)(d.score * 100) << "% " << d.ClassName << " at: " << setprecision(2) << boxcenterX << ":" << boxcenterY << "\n";
+        {   
+            NumObjects++;
+            //RawOutput.setf(ios::fixed);
+            //RawOutput << "Score: " << (int)(d.score * 100) << "% " << d.ClassName << " at: " << setprecision(2) << boxcenterX << ":" << boxcenterY << "\n";
 
-            NiceOutput << "{\"" << d.ClassName << "\"}:{\"Score:\"" << d.score << "\"},";
+            NiceOutput.setf(ios::fixed);
+            NiceOutput << "\"" << d.ClassName << "\":\"" << (int)(d.score * 100) << "% "
+                       << " at: " << setprecision(2) << boxcenterX << ":" << boxcenterY << "\",";
 
             rectangle(SessionOutput.GetImage(), d.BoxTopLeft, d.BoxBottomRigth, Scalar(0, 255, 0), 1, 8, 0);
 
@@ -41,34 +46,65 @@ void ResultHandlerClass::ResultHandling(DetectionResultClass &SessionOutput, flo
                     1, cv::LINE_AA, false);
         }
     }
-
+    //remove last ,
+    NiceOutput.seekp(-1, NiceOutput.cur);
+    NiceOutput << "}";
     //check if we are connected to MQTT server
-    if (!_cli.is_connected())
+
+    //create statitics message
+            cout << "Detected Objects:\n";
+    stringstream StatisticsOutput;
+    StatisticsOutput << "{";
+    for (auto const &x : Statistics.Stat)
     {
-        cout << "Not connected to Homeassistant MQTT Server -> try to connect...";
-        _cli.connect();
-        if (_cli.is_connected())
-            cout << "done \n";
-    }
+        StatisticsOutput << "\"" << x.first << "\":" << x.second << ",";
+        if (x.second > 0)
+                std::cout << x.first << ':' << x.second << std::endl;
+     }
+    cout << "--------------------\n";
+
+    //remove last ,
+    StatisticsOutput.seekp(-1, NiceOutput.cur);
+    StatisticsOutput << "}";
 
     if (_cli.is_connected())
     {
-        const string topic = "DetectorPi_Raw";
+        //cout << "Publishing MQTT Messages!\n";
 
         mqtt::message_ptr msg;
+
+        //send available as state
+        msg = mqtt::message::create(_StateTopic, to_string(SessionOutput.runtime));
+        _cli.publish(msg);
+
+        msg = mqtt::message::create(_AttributeTopic, NiceOutput.str());
+        _cli.publish(msg);
+
+        //Send statistics
+        msg = mqtt::message::create(_StateTopicStatistics, to_string(NumObjects));
+        _cli.publish(msg);
+
+        msg = mqtt::message::create(_AttributeTopicStatistics, StatisticsOutput.str());
+        _cli.publish(msg);
+
+        
+
+/*
+       // const string RawTopic = "DetectorPi_Raw";
         //truncate to max 255 signs for MQTT
-        if (RawOutput.str().size() > 250)
-            msg = mqtt::message::create(topic, RawOutput.str().substr(0, 250));
+        if (NiceOutput.str().size() > 250)
+            msg = mqtt::message::create(RawTopic, NiceOutput.str().substr(0, 250));
         else
-            msg = mqtt::message::create(topic, RawOutput.str());
+            msg = mqtt::message::create(RawTopic, NiceOutput.str());
 
         _cli.publish(msg);
-        cout << "Message: " << RawOutput.str() << endl;
+*/
 
-        for (auto const &x : Statistics.Stat)
-        {
-            if (x.second > 0)
-                std::cout << x.first << ':' << x.second << std::endl;
-        }
+
+            
+    }
+    else
+    {
+        cout << "\n\nNot connected to MQTT Server!!!!!!!!!!!!!!!!!!!!!\n\n";
     }
 }
