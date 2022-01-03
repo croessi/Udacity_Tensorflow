@@ -1,7 +1,6 @@
 #ifndef MESSAGEQUEUE_H
 #define MESSAGEQUEUE_H
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <vector>
@@ -16,8 +15,9 @@ class MessageQueue
 public:
   T receive();
   void send(T &&message);
+  void sendAndClear(T &&message);
   int GetSize();
- 
+
 private:
   std::mutex _mutex;
   std::condition_variable _cond;

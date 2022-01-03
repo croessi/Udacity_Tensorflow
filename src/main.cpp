@@ -37,15 +37,14 @@ The VideoWriter Gstreamer pipe for writing the processed video to a file:
 
 std::string motion_writer_pipe = "appsrc ! autovideoconvert ! v4l2h264enc ! h264parse ! mp4mux ! filesink location = " + savedMotionVideoFullPath; cv::VideoWriter motion_writer = cv::VideoWriter(motion_writer_pipe,cv::CAP_GSTREAMER,frames_per_second,frame_size,true);
 */
-int main (int argc, char *argv[])
-{ 
-  mqtt::message_ptr msg{mqtt::message::create("DetectorPi", "test")};
-  
+int main(int argc, char *argv[])
+{
+
   setenv("OPENCV_FFMPEG_CAPTURE_OPTIONS", "rtsp_transport;udp", 1);
 
   //const string RTSP_URL = "rtsp://192.168.0.49:554/ch0_1.h264";
   const string RTSP_URL = "rtspsrc location=rtsp://192.168.0.49:554/ch0_1.h264 ! rtph264depay ! h264parse ! avdec_h264 ! videoconvert ! appsink";
-  
+
   const float scale_factor = 1.0;
   const string dest_IP = "192.168.178.36";
   const string TOPIC = "DetectorPi_Raw";
@@ -131,51 +130,124 @@ int main (int argc, char *argv[])
     return 0;
 
 
-
+ VideoWriter video;
 */
-  VideoWriter video;
 
   //create Detector Instance of ssd_mobilenet_v2 via separate thread
   //promise<shared_ptr<MobilenetV2Class>> promMobilenet;
   //future<shared_ptr<MobilenetV2Class>> futMobilenet = promMobilenet.get_future();
 
-
-
-
   //get Detector Objet from thread
   String PathToModel = "../ssd_mobilenet_v2";
   shared_ptr<MobilenetV2Class> MobilenetV2 = make_shared<MobilenetV2Class>(PathToModel);
- 
+
   //String PathToModel = "../SSDMobilenetOpenImages4";
   //shared_ptr<MobilenetV2_OIv4Class> MobilenetV2 = make_shared<MobilenetV2_OIv4Class>(PathToModel);
- 
 
   //create instance of video reader and pass URL of RTSP Stream
-  VideoReader Reader(RTSP_URL,scale_factor);
-
+  VideoReader Reader(RTSP_URL, scale_factor);
   Reader.StartGrabberThread();
-
-  //give thread som tme to instanciate
-  std::this_thread::sleep_for(std::chrono::milliseconds(1));
-
-  //load Model into processor
-  TensorProcessorClass TensorProcessor(MobilenetV2);
-
-  //start detector thread
-  TensorProcessor.StartProcessorThread();
-
-  //give thread som tme to instanciate
-  std::this_thread::sleep_for(std::chrono::milliseconds(1));
-
-  //create mqtt client object
-  mqtt::client cli{"tcp://"+dest_IP+":1883", "DetectorPi"};
 
   //create VideoServer
   VideoServerClass VideoServer(dest_IP);
   VideoServer.StartVideoServerThread();
 
+  //give thread som tme to instanciate
+  //std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+  //load Model into processor & start detector thread
+  TensorProcessorClass TensorProcessor(MobilenetV2);
+  TensorProcessor.StartProcessorThread();
+
+  chrono::milliseconds dur(20);
   //frame counter
   int c1 = 0;
+  while (true)
+  {
+    auto t1 = chrono::high_resolution_clock::now();
+    unique_ptr<Mat> frame(Reader.getNextFrame());
+
+    //inital feed of detector pipeline
+    if (c1 == 0)
+      TensorProcessor.input_queue.sendAndClear(move(frame));
+
+    if (TensorProcessor.output_queue.GetSize() > 0)
+    {
+      TensorProcessor.input_queue.sendAndClear(move(frame));
+      DetectionResultClass SessionOutput(TensorProcessor.output_queue.receive());
+    }
+    //check if frame has not been moved to detector -> send
+    if (frame.get())
+      VideoServer.input_queue.sendAndClear(move(frame));
+
+    auto t2 = chrono::high_resolution_clock::now();
+    auto ms_int = chrono::duration_cast<chrono::milliseconds>(t2 - t1);
+    dur = (dur + ms_int) / 2;
+
+    if (c1 % 20 == 0)
+      cout << "Avergage runtime: " << dur.count() << "ms\n";
+    c1++;
+  }
+
+  //give thread som tme to instanciate
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+  //create mqtt client object
+  mqtt::client cli{"tcp://" + dest_IP + ":1883", "DetectorPi"};
+
+  while (true)
+  {
+    unique_ptr<Mat> frame(move(Reader.getNextFrame()));
+
+    // Check if Frame is empty
+    if (frame->empty())
+    {
+      cout << "No more Frames\n";
+      if (haveDisplay)
+        waitKey();
+
+      //Stop Threads
+      cout << "Stopping Threads\n";
+      Reader.StopGrabberThread();
+      VideoServer.StopVideoServerThread();
+      TensorProcessor.StopProcessorThread();
+
+      // When everything done, release the video window
+      destroyAllWindows();
+      return 0;
+    }
+
+    //check if we have new detection results or if we are in the first run
+    if (TensorProcessor.output_queue.GetSize() > 0 || c1 == 0)
+    {
+
+      cout << "Frame Number " << c1 << " is send to Detector \n";
+      //move frameinto que to be processed by tensor flow
+      TensorProcessor.input_queue.sendAndClear(move(frame));
+
+      if (c1 != 0) //skip first itteration
+      {
+        //get Image from detection and display
+        DetectionResultClass SessionOutput(move(TensorProcessor.output_queue.receive()));
+        cout << "\nDone\n";
+        cout << "Detection Score of ID 0: " << SessionOutput.GetDetections()[0].score << " for " << SessionOutput.GetDetections()[0].ClassName << " at TopLeft Postion: " << SessionOutput.GetDetections()[0].BoxTopLeft.x << "," << SessionOutput.GetDetections()[0].BoxTopLeft.y << "\n";
+      }
+    }
+    else
+    {
+
+      //  imshow("Frame", *frame);
+      if (c1 % 10 == 0)
+      {
+        cout << "Frame Number " << c1 << " with size: " << frame->size[0] << " is send to VideoServer \n";
+        VideoServer.input_queue.sendAndClear(move(frame));
+      }
+    }
+
+    waitKey(30);
+    c1++;
+  }
+
   while (true)
   {
 
@@ -203,10 +275,10 @@ int main (int argc, char *argv[])
     if (TensorProcessor.output_queue.GetSize() > 0 || c1 <= 1)
     {
       //move frame into detection result
-      DetectionResultClass SessionInput(move(frame));
+      //DetectionResultClass SessionInput(move(frame));
       cout << "Frame Number " << c1 << " is send to Detector \n";
       //move detection result into que to be processed by tensor flow
-      TensorProcessor.input_queue.send(move(SessionInput));
+      TensorProcessor.input_queue.sendAndClear(move(frame));
 
       //skip in init run
       if (c1 == 0)
@@ -219,7 +291,7 @@ int main (int argc, char *argv[])
       {
         //get Image from detection and display
         DetectionResultClass SessionOutput(TensorProcessor.output_queue.receive());
-        cout << "Detection Score of ID 0: " << SessionOutput.GetDetections()[0].score << " for " << SessionOutput.GetDetections()[0].ClassName << " at TopLeft Postion: " << SessionOutput.GetDetections()[0].BoxTopLeft.x << "," << SessionOutput.GetDetections()[0].BoxTopLeft.y << "\n";
+        //cout << "Detection Score of ID 0: " << SessionOutput.GetDetections()[0].score << " for " << SessionOutput.GetDetections()[0].ClassName << " at TopLeft Postion: " << SessionOutput.GetDetections()[0].BoxTopLeft.x << "," << SessionOutput.GetDetections()[0].BoxTopLeft.y << "\n";
 
         char buffer[100];
         stringstream RawOutput;
@@ -229,27 +301,26 @@ int main (int argc, char *argv[])
 
         for (Detection_t d : SessionOutput.GetDetections())
         {
- 
 
           float boxwidth = (d.BoxBottomRigth.x - d.BoxTopLeft.x) / (float)SessionOutput.GetImage().size[1];
           float boxheight = (d.BoxBottomRigth.y - d.BoxTopLeft.y) / (float)SessionOutput.GetImage().size[0];
 
-          float boxcenterX = d.BoxTopLeft.x / (float)SessionOutput.GetImage().size[1] + boxwidth * 0.5;;
-          float boxcenterY = d.BoxTopLeft.x / (float)SessionOutput.GetImage().size[0] + boxheight * 0.5;
+          float boxcenterX = d.BoxTopLeft.x / (float)SessionOutput.GetImage().size[1] + boxwidth * 0.5;
 
+          float boxcenterY = d.BoxTopLeft.y / (float)SessionOutput.GetImage().size[0] + boxheight * 0.5;
 
           //{"Timer1":{"Arm": <status>, "Time": <time>}, "Timer2":{"Arm": <status>, "Time": <time>}}
 
           if (d.score > display_threshold && boxwidth < boxwidth_threshold)
           {
-            RawOutput.setf( ios::fixed );
-            RawOutput << "Score: " << (int)(d.score*100) << "% Class: " << d.ClassName << " at: " << setprecision(2) << boxcenterX << ":" << boxcenterY << "\n";
+            RawOutput.setf(ios::fixed);
+            RawOutput << "Score: " << (int)(d.score * 100) << "% Class: " << d.ClassName << " at: " << setprecision(2) << boxcenterX << ":" << boxcenterY << "\n";
 
-            //NiceOutput << "{\"" << d.ClassName << "\"}:{\"Score:\"" << d.score << "\"},";
+            NiceOutput << "{\"" << d.ClassName << "\"}:{\"Score:\"" << d.score << "\"},";
 
             rectangle(SessionOutput.GetImage(), d.BoxTopLeft, d.BoxBottomRigth, Scalar(0, 255, 0), 1, 8, 0);
-            
-            Statistics.Stat["d.ClassName"]++;
+
+            Statistics.Stat[d.ClassName]++;
 
             snprintf(buffer, 100, "%s %d%%", d.ClassName.c_str(), (int)(d.score * 100));
 
@@ -261,39 +332,36 @@ int main (int argc, char *argv[])
                     cv::Scalar(255, 255, 255),
                     1, cv::LINE_AA, false);
           }
-
         }
 
-       
-          //check if we are connected to MQTT server
-          if (!cli.is_connected())
-          {
-            cout << "Not connected to Homeassistant MQTT Server -> try to connect...";
-            cli.connect();
-            if (cli.is_connected())
-              cout << "done \n";
-          }
-
+        //check if we are connected to MQTT server
+        if (!cli.is_connected())
+        {
+          cout << "Not connected to Homeassistant MQTT Server -> try to connect...";
+          cli.connect();
           if (cli.is_connected())
-            {
-              //truncate to max 255 signs for MQTT
-              if (RawOutput.str().size() > 250)
-              {
-                String Msg = RawOutput.str().substr(0,250);
-                mqtt::message_ptr msg{mqtt::message::create(TOPIC, Msg)};
-              }
-              else
-                mqtt::message_ptr msg{mqtt::message::create(TOPIC, RawOutput.str())};
-              
-	            cli.publish(msg);
+            cout << "done \n";
+        }
 
-              for (auto const& x : Statistics.Stat)
-              { 
-                  if (x.second >0)
-                    std::cout << Statistics.Stat[x.first] << ':' << x.second << std::endl;
-              }
+        if (cli.is_connected())
+        {
+          //cout << "RawOutput: \n" << RawOutput.str() << endl;
+          mqtt::message_ptr msg;
+          //truncate to max 255 signs for MQTT
+          if (RawOutput.str().size() > 250)
+            msg = mqtt::message::create(TOPIC, RawOutput.str().substr(0, 250));
+          else
+            msg = mqtt::message::create(TOPIC, RawOutput.str());
 
-            }
+          cli.publish(msg);
+          cout << "Message: " << RawOutput.str() << endl;
+
+          for (auto const &x : Statistics.Stat)
+          {
+            if (x.second > 0)
+              std::cout << x.first << ':' << x.second << std::endl;
+          }
+        }
 
         // Display the resulting frame - if a display is available
         if (haveDisplay)
@@ -303,36 +371,9 @@ int main (int argc, char *argv[])
         }
 
         //send frame to Video Server
-        unique_ptr<Mat>Image(move(SessionOutput.MoveImage()));
-        VideoServer.input_queue.send(move(Image));
-
-        
-/*
-       if (!video.isOpened())
-      {
-        cout << "Try to open Frame Writer\n";
-        //x264enc tune=zerolatency speed-preset=ultrafast
-        //video.open("appsrc ! videoconvert ! x264enc me=hex tune=zerolatency speed-preset=ultrafast key-int-max=50 intra-refresh=true ! h264parse ! rtph264pay config-interval=5 pt=96 ! udpsink host=" + dest_IP+ " port=5000 sync=false",0, 20, frame.size(), true);
-        //video.open("appsrc ! videoconvert ! x264enc me=hex tune=zerolatency bitrate =500 speed-preset=superfast ! h264parse ! rtph264pay config-interval=5 pt=96 ! udpsink host=" + dest_IP+ " port=5000 sync=false",0, 20, frame.size(), true);
-        int fourcc =    VideoWriter::fourcc('H','2','6','4');
-       
-        video.open("appsrc ! videoconvert ! x264enc tune=zerolatency speed-preset=ultrafast key-int-max=2 ! h264parse ! rtph264pay config-interval=5 pt=96 ! udpsink host=" + dest_IP+ " port=5000 sync=false",CAP_GSTREAMER,fourcc, 5, Image->size(), true);
-      
-  
-        if (!video.isOpened())
-        {
-          cout << "Frame Writer not availbale!\n";
-          return -1;
-        }
+        //unique_ptr<Mat> Image(move(SessionOutput.MoveImage()));
+        //VideoServer.input_queue.send(move(Image));
       }
-
-      cout << "Frame with size: " << Image->size[0] << "to write\n";
-      video.write(*Image);
-      cout << "Done\n";
-
-*/
-      }
-      
     }
     else
     {
@@ -342,10 +383,11 @@ int main (int argc, char *argv[])
       //if (haveDisplay)
       //  imshow("Frame", *frame);
       if (c1 % 20 == 0)
-      cout << "Frame Number " << c1 << " is displayed \n";
-      waitKey(60);
+        cout << "Frame Number " << c1 << " is displayed \n";
+      waitKey(30);
     }
     c1++;
+    frame.release();
   }
   return 0;
 }

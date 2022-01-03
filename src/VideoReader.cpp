@@ -5,7 +5,6 @@
 void VideoReader::StartGrabberThread()
 {
     _readFrameLoopThread = thread(&VideoReader::FrameReadLoop, this);
-    
 }
 
 void VideoReader::StopGrabberThread()
@@ -23,23 +22,25 @@ void VideoReader::FrameReadLoop()
     cout << "Frame Grabber thread started.\n";
     unique_lock<mutex> lck(_mut);
     //create cpature instance
-    
-    if (!_cap)
-        _cap =  make_unique<VideoCapture>(_input, CAP_GSTREAMER);
 
-    if (!_cap->isOpened()) {
-        std::cout << "Cannot open RTSP stream to: " << _input<< std::endl;
+    if (!_cap)
+        _cap = make_unique<VideoCapture>(_input, CAP_GSTREAMER);
+
+    if (!_cap->isOpened())
+    {
+        std::cout << "Cannot open RTSP stream to: " << _input << std::endl;
         return;
     }
-    
+
     while (true)
     {
 
-        //only cpature mor frames if buffer runs low
-        if (_frameBuffer.size() < 3)
+        //only cpature more frames if buffer runs low
+        if (_frameBuffer.size() < 2)
         {
             lck.unlock();
 
+            //Mat f(Size(10000, 10000), CV_16F);
             Mat f;
             *_cap >> f;
 
@@ -47,37 +48,35 @@ void VideoReader::FrameReadLoop()
             // If the frame is empty no more to read -> exit thread
             //if (f.empty() || _exitThread)
             if (_exitThread)
-            {               
+            {
                 cout << "Exit Thread called -> exit framegrabber thread.\n";
                 _frameBuffer.emplace(_frameBuffer.begin(), move(f));
                 lck.unlock();
                 return;
             }
 
-            if (!f.empty()){
-                
+            if (!f.empty())
+            {
+
                 //rescale
                 if (_scalingFactor != 1.0)
                 {
-                    float scale_percent = 50;
-                    int d_width = f.size[1] * scale_percent / 100;
-                    int d_height = f.size[0] * scale_percent / 100;
+                    int d_width = f.size[1] * _scalingFactor;
+                    int d_height = f.size[0] * _scalingFactor;
 
                     Mat f_small;
-                    resize (f,f_small,Size(d_width,d_height));
+                    resize(f, f_small, Size(d_width, d_height));
                     f.release();
                     f = f_small;
                 }
 
                 _frameBuffer.emplace(_frameBuffer.begin(), move(f));
-                    
             }
             else
             {
-            cout << "Empty frame & Framebuffer @" << _frameBuffer.size() << "frames\n";
-            _cap->release ();
-            _cap.release ();
-            //_cap =  make_unique<VideoCapture>(Cap_pipeline,CAP_GSTREAMER);
+                cout << "Empty frame & Framebuffer @" << _frameBuffer.size() << "frames\n";
+                _cap->release();
+                _cap.release();
             }
         }
 

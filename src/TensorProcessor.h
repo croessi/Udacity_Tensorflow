@@ -94,10 +94,8 @@ public:
     if (this == &source)
       return *this;
 
-    if (_image)
-      _image = nullptr;
-
     _image = move(source._image);
+
     source._image = nullptr;
     return *this;
   }
@@ -161,7 +159,7 @@ public:
   virtual const string GetDetectorName() = 0;
   virtual void SetImageSize(const int w, const int h) = 0;
   virtual unique_ptr<Mat> ConvertImage(const Mat &OpenCVImage) = 0;
-  virtual DetectionResultClass ProcessResults(DetectionResultClass &&SessionResult, TF_Tensor **OutputValues, int width, int heigth) = 0;
+  virtual void ProcessResults(DetectionResultClass &SessionResult, TF_Tensor **OutputValues, int width, int heigth) = 0;
 
   const string _pathToModel;
 
@@ -194,7 +192,7 @@ public:
     return "SSD+MobileNetV2 network trained on Open Images V4";
   }
 
-  MobilenetV2_OIv4Class(string &PathToModel) : DetectorClass(PathToModel," ","default", TensorDescription("input_tensor", TF_FLOAT, 0, {-1, -1, 3}))
+  MobilenetV2_OIv4Class(string &PathToModel) : DetectorClass(PathToModel, " ", "default", TensorDescription("input_tensor", TF_FLOAT, 0, {-1, -1, 3}))
   {
     //parameters can bea read out via gogle colar with !saved_model_cli show --dir {'Model'}  --tag_set serve --signature_def serving_default
     //input Tensor is already created at construction - outputs later
@@ -231,10 +229,8 @@ public:
     return (make_unique<Mat>(img2));
   }
 
-  DetectionResultClass ProcessResults(DetectionResultClass &&SessionResult, TF_Tensor **OutputValues, int width, int heigth) override
+  void ProcessResults(DetectionResultClass &SessionResult, TF_Tensor **OutputValues, int width, int heigth) override
   {
-
-    return (move(SessionResult));
   }
 };
 
@@ -296,13 +292,12 @@ public:
   {
     Mat cp;
     OpenCVImage.copyTo(cp);
-    return (make_unique<Mat>(cp));
+    return (make_unique<Mat>(move(cp)));
   }
 
-  DetectionResultClass ProcessResults(DetectionResultClass &&SessionResult, TF_Tensor **OutputValues, int width, int heigth) override
+  void ProcessResults(DetectionResultClass &SessionResult, TF_Tensor **OutputValues, int width, int heigth) override
   {
     //decode detection
-
     int num_detections = *(float *)(TF_TensorData(OutputValues[5]));
     for (int i = 0; i < num_detections; i++)
     {
@@ -321,8 +316,6 @@ public:
 
       SessionResult.AddDetection(move(Detection));
     }
-
-    return (move(SessionResult));
   }
 
 private:
@@ -338,7 +331,7 @@ public:
   void StartProcessorThread();
   void StopProcessorThread();
 
-  MessageQueue<DetectionResultClass> input_queue;
+  MessageQueue<unique_ptr<Mat>> input_queue;
   MessageQueue<DetectionResultClass> output_queue;
 
   void SessionRunLoop();

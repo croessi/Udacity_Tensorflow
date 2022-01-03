@@ -27,7 +27,7 @@ private:
     bool _exitThread;
 
 public:
-    VideoReader(string input, float scalingFactor = 1.0) : _input(input),_scalingFactor(scalingFactor), _cap(nullptr), _exitThread(false){};
+    VideoReader(string input, float scalingFactor = 1.0) : _input(input), _scalingFactor(scalingFactor), _cap(nullptr), _exitThread(false){};
     ~VideoReader() { _cap.release(); };
 
     void StartGrabberThread();
