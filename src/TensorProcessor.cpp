@@ -133,8 +133,8 @@ void TensorProcessorClass::SessionRunLoop()
     //Run the Session
     auto t1 = chrono::high_resolution_clock::now();
 
-    waitKey(300);
-    //TF_SessionRun(_session, NULL, _input, InputValues, _detector->GetInputTensorSize(), _output, OutputValues, _detector->GetOutputTensorDescriptions().size(), NULL, 0, NULL, _status);
+    //waitKey(300);
+    TF_SessionRun(_session, NULL, _input, InputValues, _detector->GetInputTensorSize(), _output, OutputValues, _detector->GetOutputTensorDescriptions().size(), NULL, 0, NULL, _status);
 
     //InputImage->release();
 
@@ -147,7 +147,14 @@ void TensorProcessorClass::SessionRunLoop()
       cout << "Session run error :" << TF_Message(_status);
 
     //interpretation of results
-    //_detector->ProcessResults(SessionResult, OutputValues, width, height);
+    _detector->ProcessResults(SessionResult, OutputValues, width, height);
+
+    //cleanup
+    TF_DeleteTensor(int_tensor);
+    for (int i = 0; i < _detector->GetOutputTensorDescriptions().size(); i++)
+    {
+      TF_DeleteTensor(OutputValues[i]);
+    }
 
     //move back detection via output que
     output_queue.sendAndClear(move(SessionResult));

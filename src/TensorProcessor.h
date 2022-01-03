@@ -114,9 +114,6 @@ public:
       _image = nullptr;
     return *this;
   }
-
-  //todo move constructores etc.
-  bool DetectionDone = false;
 };
 
 class TensorDescription

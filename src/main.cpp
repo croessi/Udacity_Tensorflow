@@ -19,14 +19,11 @@
 #include "VideoServer.h"
 #include "TensorProcessor.h"
 #include "MessageQueue.h"
-#include "MessageQueue.cpp" //neded to avoid linker issues
-#include "Statistics.h"
+#include "MessageQueue.cpp" //neded to avoid linker issues^
+#include "ResultHandling.h"
 
 using namespace cv;
 using namespace std;
-
-const float display_threshold = 0.5;  //minimum confidence to display a bounding box
-const float boxwidth_threshold = 0.5; //maximum size of boxes to filter out huge boundinb boxes
 
 bool haveDisplay = false;
 
@@ -47,7 +44,9 @@ int main(int argc, char *argv[])
 
   const float scale_factor = 1.0;
   const string dest_IP = "192.168.178.36";
-  const string TOPIC = "DetectorPi_Raw";
+
+  const float display_threshold = 0.5;  //minimum confidence to process a detection
+  const float boxwidth_threshold = 0.5; //maximum size of boxes to filter out huge boundinb boxes
 
   if (argc < 4 && false)
   {
@@ -159,7 +158,12 @@ int main(int argc, char *argv[])
   TensorProcessorClass TensorProcessor(MobilenetV2);
   TensorProcessor.StartProcessorThread();
 
+  //counter for average runtime of main loop
   chrono::milliseconds dur(20);
+
+  //Class to manage all results incl sending via MQTT
+  ResultHandlerClass ResultHandler(dest_IP);
+
   //frame counter
   int c1 = 0;
   while (true)
@@ -175,17 +179,21 @@ int main(int argc, char *argv[])
     {
       TensorProcessor.input_queue.sendAndClear(move(frame));
       DetectionResultClass SessionOutput(TensorProcessor.output_queue.receive());
+      cout << "Detection Score of ID 0: " << SessionOutput.GetDetections()[0].score << " for " << SessionOutput.GetDetections()[0].ClassName << " at TopLeft Postion: " << SessionOutput.GetDetections()[0].BoxTopLeft.x << "," << SessionOutput.GetDetections()[0].BoxTopLeft.y << "\n";
+
+      ResultHandler.ResultHandling(SessionOutput, display_threshold, boxwidth_threshold);
+      VideoServer.input_queue.sendAndClear(move(SessionOutput.MoveImage()));
     }
     //check if frame has not been moved to detector -> send
-    if (frame.get())
-      VideoServer.input_queue.sendAndClear(move(frame));
+    //if (frame.get())
+    //  VideoServer.input_queue.sendAndClear(move(frame));
 
     auto t2 = chrono::high_resolution_clock::now();
     auto ms_int = chrono::duration_cast<chrono::milliseconds>(t2 - t1);
     dur = (dur + ms_int) / 2;
 
     if (c1 % 20 == 0)
-      cout << "Avergage runtime: " << dur.count() << "ms\n";
+      cout << "Avergage runtime of Main loop: " << dur.count() << "ms\n";
     c1++;
   }
 
@@ -348,11 +356,11 @@ int main(int argc, char *argv[])
           //cout << "RawOutput: \n" << RawOutput.str() << endl;
           mqtt::message_ptr msg;
           //truncate to max 255 signs for MQTT
-          if (RawOutput.str().size() > 250)
+          /* if (RawOutput.str().size() > 250)
             msg = mqtt::message::create(TOPIC, RawOutput.str().substr(0, 250));
           else
             msg = mqtt::message::create(TOPIC, RawOutput.str());
-
+*/
           cli.publish(msg);
           cout << "Message: " << RawOutput.str() << endl;
 
