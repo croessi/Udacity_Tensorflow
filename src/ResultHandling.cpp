@@ -8,7 +8,7 @@ void ResultHandlerClass::ResultHandling(DetectionResultClass &SessionOutput, flo
     NiceOutput << "{";
 
     StatisticsClass Statistics;
-     int NumObjects = 0;
+    int NumObjects = 0;
 
     for (Detection_t d : SessionOutput.GetDetections())
     {
@@ -22,14 +22,22 @@ void ResultHandlerClass::ResultHandling(DetectionResultClass &SessionOutput, flo
         //{"Timer1":{"Arm": <status>, "Time": <time>}, "Timer2":{"Arm": <status>, "Time": <time>}}
 
         if (d.score > display_threshold && boxwidth < boxwidth_threshold)
-        {   
+        {
             NumObjects++;
             //RawOutput.setf(ios::fixed);
             //RawOutput << "Score: " << (int)(d.score * 100) << "% " << d.ClassName << " at: " << setprecision(2) << boxcenterX << ":" << boxcenterY << "\n";
 
             NiceOutput.setf(ios::fixed);
-            NiceOutput << "\"" << d.ClassName << "\":\"" << (int)(d.score * 100) << "% "
-                       << " at: " << setprecision(2) << boxcenterX << ":" << boxcenterY << "\",";
+            if (Statistics.Stat[d.ClassName] > 0)
+            {
+                NiceOutput << "\"" << d.ClassName << "_" << Statistics.Stat[d.ClassName] << "\":\"" << (int)(d.score * 100) << "% "
+                           << " at:" << setprecision(2) << boxcenterX << ":" << boxcenterY << "\",";
+            }
+            else
+            {
+                NiceOutput << "\"" << d.ClassName << "\":\"" << (int)(d.score * 100) << "% "
+                           << " at:" << setprecision(2) << boxcenterX << ":" << boxcenterY << "\",";
+            }
 
             rectangle(SessionOutput.GetImage(), d.BoxTopLeft, d.BoxBottomRigth, Scalar(0, 255, 0), 1, 8, 0);
 
@@ -52,15 +60,15 @@ void ResultHandlerClass::ResultHandling(DetectionResultClass &SessionOutput, flo
     //check if we are connected to MQTT server
 
     //create statitics message
-            cout << "Detected Objects:\n";
+    cout << "Detected Objects:\n";
     stringstream StatisticsOutput;
     StatisticsOutput << "{";
     for (auto const &x : Statistics.Stat)
     {
         StatisticsOutput << "\"" << x.first << "\":" << x.second << ",";
         if (x.second > 0)
-                std::cout << x.first << ':' << x.second << std::endl;
-     }
+            std::cout << x.first << ':' << x.second << std::endl;
+    }
     cout << "--------------------\n";
 
     //remove last ,
@@ -86,25 +94,10 @@ void ResultHandlerClass::ResultHandling(DetectionResultClass &SessionOutput, flo
 
         msg = mqtt::message::create(_AttributeTopicStatistics, StatisticsOutput.str());
         _cli.publish(msg);
-
-        
-
-/*
-       // const string RawTopic = "DetectorPi_Raw";
-        //truncate to max 255 signs for MQTT
-        if (NiceOutput.str().size() > 250)
-            msg = mqtt::message::create(RawTopic, NiceOutput.str().substr(0, 250));
-        else
-            msg = mqtt::message::create(RawTopic, NiceOutput.str());
-
-        _cli.publish(msg);
-*/
-
-
-            
     }
     else
     {
-        cout << "\n\nNot connected to MQTT Server!!!!!!!!!!!!!!!!!!!!!\n\n";
+        _cli.reconnect();
+        cout << "\n\nNot connected to MQTT Server - try to reconnect!!!!!!!!!!!!!!!!!!!!!\n\n";
     }
 }

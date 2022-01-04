@@ -10,7 +10,8 @@
 
 #include <iostream>
 #include <iomanip>
-#include <future>
+#include <iterator>
+//#include <future>
 
 #include <mqtt/client.h>
 #include <sstream>
@@ -39,19 +40,63 @@ int main(int argc, char *argv[])
 
   setenv("OPENCV_FFMPEG_CAPTURE_OPTIONS", "rtsp_transport;udp", 1);
 
+  string InstanceName = "DetectorPi_Guard";
+  string PathToModel = "../ssd_mobilenet_v2";
+
   //const string RTSP_URL = "rtsp://192.168.0.49:554/ch0_1.h264";
-  const string RTSP_URL = "rtspsrc location=rtsp://192.168.0.49:554/ch0_1.h264 ! rtph264depay ! h264parse ! avdec_h264 ! videoconvert ! appsink drop=true max-buffers=2";
+  string Cam_URL = "rtspsrc location=rtsp://192.168.0.49:554/ch0_1.h264 ! rtph264depay ! h264parse ! avdec_h264 ! videoconvert ! appsink drop=true max-buffers=2";
 
-  const float scale_factor = 1.0;
-  const string dest_IP = "192.168.178.36";
+  float scale_factor = 1.0;
+  string dest_IP = "192.168.178.36";
 
-  const float display_threshold = 0.5;  //minimum confidence to process a detection
-  const float boxwidth_threshold = 0.5; //maximum size of boxes to filter out huge boundinb boxes
+  float detection_threshold = 0.5; //minimum confidence to process a detection
+  float boxwidth_threshold = 0.5;  //maximum size of boxes to filter out huge boundinb boxes
+  int waitInMainLoop = 1000;
 
-  if (argc < 4 && false)
+  string OutputPipe = "appsrc ! videoconvert ! x264enc tune=zerolatency speed-preset=ultrafast key-int-max=2 ! h264parse ! rtph264pay config-interval=5 pt=96 ! udpsink host=";
+  int OutputPort = 5000;
+  bool sendDetectorFrame = true;
+
+  string MQTTuser = "mqtt";
+  string MQTTpassword = "double45double";
+
+  cout << "name of program: " << argv[0] << '\n';
+  if (argc > 1)
   {
-    cout << "Not enough arguments provided. Usage main.exe source-rtsp-url scale-factor dest-IP\n";
+
+    cout << "there are " << argc - 1 << " (more) arguments, they are:\n";
+    copy(argv + 1, argv + argc, std::ostream_iterator<const char *>(std::cout, "\n"));
+
+    int i = 1;
+    InstanceName = argv[i++];
+    PathToModel = argv[i++];
+    Cam_URL = argv[i++];
+    scale_factor = stof(argv[i++]);
+    dest_IP = argv[i++];
+    detection_threshold = stof(argv[i++]);
+    boxwidth_threshold = stof(argv[i++]);
+    waitInMainLoop = stoi(argv[i++]);
+    OutputPipe = argv[i++];
+    OutputPort = stoi(argv[i++]);
+    sendDetectorFrame = (argv[i++] == "true");
+    MQTTuser = argv[i++];
+    MQTTpassword = argv[i++];
   }
+  else
+    cout << "Not enough arguments provided. Using standard values: " << InstanceName << "\n"
+         << PathToModel << "\n"
+         << Cam_URL << "\n"
+         << scale_factor << "\n"
+         << dest_IP << "\n"
+         << detection_threshold << "\n"
+         << boxwidth_threshold << "\n"
+         << waitInMainLoop << "\n"
+         << OutputPipe << "\n"
+         << OutputPort << "\n"
+         << sendDetectorFrame << "\n"
+         << MQTTuser << "\n"
+         << MQTTpassword << "\n"
+         << "\n Parameters are: PathToModel CameraURL scale_factor HomeAssistantServerIP detection_threshold boxwidth_threshold  wait_ms_in_Main_Loop sendDetectorFrame MQTTuser MQTTpassword" << endl;
 
   //cout << cv::getBuildInformation();
   //return 0;
@@ -137,22 +182,23 @@ int main(int argc, char *argv[])
   //future<shared_ptr<MobilenetV2Class>> futMobilenet = promMobilenet.get_future();
 
   //get Detector Objet from thread
-  String PathToModel = "../ssd_mobilenet_v2";
+
   shared_ptr<MobilenetV2Class> MobilenetV2 = make_shared<MobilenetV2Class>(PathToModel);
 
   //String PathToModel = "../SSDMobilenetOpenImages4";
   //shared_ptr<MobilenetV2_OIv4Class> MobilenetV2 = make_shared<MobilenetV2_OIv4Class>(PathToModel);
 
   //create instance of video reader and pass URL of RTSP Stream
-  VideoReader Reader(RTSP_URL, scale_factor);
+  VideoReader Reader(Cam_URL, scale_factor);
   Reader.StartGrabberThread();
 
   //create VideoServer
-  VideoServerClass VideoServer(dest_IP);
-  VideoServer.StartVideoServerThread();
+  VideoServerClass VideoServer(dest_IP, OutputPipe, OutputPort);
+  if (sendDetectorFrame)
+    VideoServer.StartVideoServerThread();
 
   //Class to manage all results incl sending via MQTT
-  ResultHandlerClass ResultHandler(dest_IP);
+  ResultHandlerClass ResultHandler(dest_IP, sendDetectorFrame, MQTTuser, MQTTpassword, InstanceName);
 
   //give thread som tme to instanciate
   //std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -181,8 +227,9 @@ int main(int argc, char *argv[])
       DetectionResultClass SessionOutput(TensorProcessor.output_queue.receive());
       cout << "Detection Score of ID 0: " << SessionOutput.GetDetections()[0].score << " for " << SessionOutput.GetDetections()[0].ClassName << " at TopLeft Postion: " << SessionOutput.GetDetections()[0].BoxTopLeft.x << "," << SessionOutput.GetDetections()[0].BoxTopLeft.y << "\n";
 
-      ResultHandler.ResultHandling(SessionOutput, display_threshold, boxwidth_threshold);
-      VideoServer.input_queue.sendAndClear(move(SessionOutput.MoveImage()));
+      ResultHandler.ResultHandling(SessionOutput, detection_threshold, boxwidth_threshold);
+      if (sendDetectorFrame)
+        VideoServer.input_queue.sendAndClear(move(SessionOutput.MoveImage()));
     }
     //check if frame has not been moved to detector -> send
     //if (frame.get())
@@ -195,8 +242,10 @@ int main(int argc, char *argv[])
     if (c1 % 20 == 0)
       cout << "Avergage runtime of Main loop: " << dur.count() << "ms\n";
     c1++;
+    waitKey(waitInMainLoop);
   }
 
+  /*
   //give thread som tme to instanciate
   std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
@@ -252,150 +301,7 @@ int main(int argc, char *argv[])
       }
     }
 
-    waitKey(30);
+    waitKey(waitInMainLoop);
     c1++;
-  }
-
-  while (true)
-  {
-
-    unique_ptr<Mat> frame(move(Reader.getNextFrame()));
-
-    // Check if Frame is empty
-    if (frame->empty())
-    {
-      cout << "No more Frames\n";
-      if (haveDisplay)
-        waitKey();
-
-      //Stop Threads
-      cout << "Stopping Threads\n";
-      Reader.StopGrabberThread();
-      VideoServer.StopVideoServerThread();
-      TensorProcessor.StopProcessorThread();
-
-      // When everything done, release the video window
-      destroyAllWindows();
-      return 0;
-    }
-
-    //check if we have new images or if we are in the first run
-    if (TensorProcessor.output_queue.GetSize() > 0 || c1 <= 1)
-    {
-      //move frame into detection result
-      //DetectionResultClass SessionInput(move(frame));
-      cout << "Frame Number " << c1 << " is send to Detector \n";
-      //move detection result into que to be processed by tensor flow
-      TensorProcessor.input_queue.sendAndClear(move(frame));
-
-      //skip in init run
-      if (c1 == 0)
-      {
-        cout << "Wait until Network has run for the first time.....\n";
-        std::this_thread::sleep_for(std::chrono::milliseconds(10)); //give cout some time
-      }
-
-      if (c1 != 1) //skip waiting in second run
-      {
-        //get Image from detection and display
-        DetectionResultClass SessionOutput(TensorProcessor.output_queue.receive());
-        //cout << "Detection Score of ID 0: " << SessionOutput.GetDetections()[0].score << " for " << SessionOutput.GetDetections()[0].ClassName << " at TopLeft Postion: " << SessionOutput.GetDetections()[0].BoxTopLeft.x << "," << SessionOutput.GetDetections()[0].BoxTopLeft.y << "\n";
-
-        char buffer[100];
-        stringstream RawOutput;
-        stringstream NiceOutput;
-
-        StatisticsClass Statistics;
-
-        for (Detection_t d : SessionOutput.GetDetections())
-        {
-
-          float boxwidth = (d.BoxBottomRigth.x - d.BoxTopLeft.x) / (float)SessionOutput.GetImage().size[1];
-          float boxheight = (d.BoxBottomRigth.y - d.BoxTopLeft.y) / (float)SessionOutput.GetImage().size[0];
-
-          float boxcenterX = d.BoxTopLeft.x / (float)SessionOutput.GetImage().size[1] + boxwidth * 0.5;
-
-          float boxcenterY = d.BoxTopLeft.y / (float)SessionOutput.GetImage().size[0] + boxheight * 0.5;
-
-          //{"Timer1":{"Arm": <status>, "Time": <time>}, "Timer2":{"Arm": <status>, "Time": <time>}}
-
-          if (d.score > display_threshold && boxwidth < boxwidth_threshold)
-          {
-            RawOutput.setf(ios::fixed);
-            RawOutput << "Score: " << (int)(d.score * 100) << "% Class: " << d.ClassName << " at: " << setprecision(2) << boxcenterX << ":" << boxcenterY << "\n";
-
-            NiceOutput << "{\"" << d.ClassName << "\"}:{\"Score:\"" << d.score << "\"},";
-
-            rectangle(SessionOutput.GetImage(), d.BoxTopLeft, d.BoxBottomRigth, Scalar(0, 255, 0), 1, 8, 0);
-
-            Statistics.Stat[d.ClassName]++;
-
-            snprintf(buffer, 100, "%s %d%%", d.ClassName.c_str(), (int)(d.score * 100));
-
-            putText(SessionOutput.GetImage(),
-                    buffer,
-                    Point2d(d.BoxTopLeft.x, d.BoxBottomRigth.y),
-                    cv::FONT_HERSHEY_COMPLEX_SMALL,
-                    0.5,
-                    cv::Scalar(255, 255, 255),
-                    1, cv::LINE_AA, false);
-          }
-        }
-
-        //check if we are connected to MQTT server
-        if (!cli.is_connected())
-        {
-          cout << "Not connected to Homeassistant MQTT Server -> try to connect...";
-          cli.connect();
-          if (cli.is_connected())
-            cout << "done \n";
-        }
-
-        if (cli.is_connected())
-        {
-          //cout << "RawOutput: \n" << RawOutput.str() << endl;
-          mqtt::message_ptr msg;
-          //truncate to max 255 signs for MQTT
-          /* if (RawOutput.str().size() > 250)
-            msg = mqtt::message::create(TOPIC, RawOutput.str().substr(0, 250));
-          else
-            msg = mqtt::message::create(TOPIC, RawOutput.str());
-*/
-          cli.publish(msg);
-          cout << "Message: " << RawOutput.str() << endl;
-
-          for (auto const &x : Statistics.Stat)
-          {
-            if (x.second > 0)
-              std::cout << x.first << ':' << x.second << std::endl;
-          }
-        }
-
-        // Display the resulting frame - if a display is available
-        if (haveDisplay)
-        {
-          imshow("DetectorResults", SessionOutput.GetImage());
-          //waitKey(0);
-        }
-
-        //send frame to Video Server
-        //unique_ptr<Mat> Image(move(SessionOutput.MoveImage()));
-        //VideoServer.input_queue.send(move(Image));
-      }
-    }
-    else
-    {
-      //send frame to Video Server
-      // VideoServer.input_queue.send(move(*frame));
-
-      //if (haveDisplay)
-      //  imshow("Frame", *frame);
-      if (c1 % 20 == 0)
-        cout << "Frame Number " << c1 << " is displayed \n";
-      waitKey(30);
-    }
-    c1++;
-    frame.release();
-  }
-  return 0;
+  }*/
 }

@@ -25,12 +25,15 @@ using namespace cv;
 class VideoServerClass
 {
 public:
-  VideoServerClass(string dest_IP) : _dest_IP(dest_IP){};
+  VideoServerClass(string dest_IP, const string outputPipe, const int outputPort) : _dest_IP(dest_IP),
+                                                                                    _outputPipe(outputPipe),
+                                                                                    _outputPort(outputPort){};
 
-  ~VideoServerClass(){
+  ~VideoServerClass()
+  {
     if (_video.isOpened())
       _video.release();
-}
+  }
 
   void StartVideoServerThread();
   void StopVideoServerThread();
@@ -40,11 +43,12 @@ public:
   const string _dest_IP;
   MessageQueue<unique_ptr<Mat>> input_queue;
 
-  private:
+private:
   VideoWriter _video;
 
   thread _VideoServerThread;
-
+  const string _outputPipe;
+  const int _outputPort;
 };
 
 #endif

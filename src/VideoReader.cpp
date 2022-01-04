@@ -26,10 +26,11 @@ void VideoReader::FrameReadLoop()
     if (!_cap)
         _cap = make_unique<VideoCapture>(_input, CAP_GSTREAMER);
 
-    if (!_cap->isOpened())
+    while (!_cap->isOpened())
     {
-        std::cout << "Cannot open RTSP stream to: " << _input << std::endl;
-        return;
+        std::cout << "Could not open RTSP stream to: " << _input << " will try again." << std::endl;
+        _cap->open(_input, CAP_GSTREAMER);
+        waitKey(10000);
     }
 
     while (true)
@@ -52,6 +53,8 @@ void VideoReader::FrameReadLoop()
                 cout << "Exit Thread called -> exit framegrabber thread.\n";
                 _frameBuffer.emplace(_frameBuffer.begin(), move(f));
                 lck.unlock();
+                _cap->release();
+                _cap.release();
                 return;
             }
 
@@ -74,9 +77,9 @@ void VideoReader::FrameReadLoop()
             }
             else
             {
-                cout << "Empty frame & Framebuffer @" << _frameBuffer.size() << "frames\n";
-                _cap->release();
-                _cap.release();
+                cout << "Empty frame & Framebuffer @" << _frameBuffer.size() << " frames. Try to reopen capture.\n";
+                _cap->open(_input, CAP_GSTREAMER);
+                waitKey(10000);
             }
         }
 

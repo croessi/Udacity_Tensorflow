@@ -53,6 +53,7 @@
         "ratio": "cpp",
         "mutex": "cpp",
         "future": "cpp",
-        "map": "cpp"
+        "map": "cpp",
+        "iomanip": "cpp"
     }
 }
