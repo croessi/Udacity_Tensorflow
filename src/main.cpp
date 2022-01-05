@@ -60,12 +60,11 @@ int main(int argc, char *argv[])
   string MQTTuser = "mqtt";
   string MQTTpassword = "double45double";
 
-  cout << "name of program: " << argv[0] << '\n';
+  cout << "\n Instance " << argv[0] << "is starting.\n";
   if (argc > 1)
   {
-
-    cout << "there are " << argc - 1 << " (more) arguments, they are:\n";
-    copy(argv + 1, argv + argc, std::ostream_iterator<const char *>(std::cout, "\n"));
+    cout << "Start Parameters are:\n";
+    copy(argv + 1, argv + argc, std::ostream_iterator<const char *>(std::cout, " "));
 
     int i = 1;
     InstanceName = argv[i++];
@@ -78,7 +77,7 @@ int main(int argc, char *argv[])
     waitInMainLoop = stoi(argv[i++]);
     OutputPipe = argv[i++];
     OutputPort = stoi(argv[i++]);
-    sendDetectorFrame = (argv[i++] == "true");
+    sendDetectorFrame = (string(argv[i++]) == "true");
     MQTTuser = argv[i++];
     MQTTpassword = argv[i++];
   }
@@ -96,7 +95,7 @@ int main(int argc, char *argv[])
          << sendDetectorFrame << "\n"
          << MQTTuser << "\n"
          << MQTTpassword << "\n"
-         << "\n Parameters are: PathToModel CameraURL scale_factor HomeAssistantServerIP detection_threshold boxwidth_threshold  wait_ms_in_Main_Loop sendDetectorFrame MQTTuser MQTTpassword" << endl;
+         << "\nParameters are: InstanceName PathToModel CameraURL scale_factor HomeAssistantServerIP detection_threshold boxwidth_threshold  wait_ms_in_Main_Loop OutputPipe OutputPort sendDetectorFrame MQTTuser MQTTpassword" << endl;
 
   //cout << cv::getBuildInformation();
   //return 0;
@@ -182,7 +181,6 @@ int main(int argc, char *argv[])
   //future<shared_ptr<MobilenetV2Class>> futMobilenet = promMobilenet.get_future();
 
   //get Detector Objet from thread
-
   shared_ptr<MobilenetV2Class> MobilenetV2 = make_shared<MobilenetV2Class>(PathToModel);
 
   //String PathToModel = "../SSDMobilenetOpenImages4";
@@ -197,6 +195,7 @@ int main(int argc, char *argv[])
   if (sendDetectorFrame)
     VideoServer.StartVideoServerThread();
 
+  //dest_IP = "192.168.178.36";
   //Class to manage all results incl sending via MQTT
   ResultHandlerClass ResultHandler(dest_IP, sendDetectorFrame, MQTTuser, MQTTpassword, InstanceName);
 
