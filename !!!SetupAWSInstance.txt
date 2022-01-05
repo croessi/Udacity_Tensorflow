@@ -64,7 +64,7 @@ sudo apt-get install gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreame
 sudo apt install vpnc
 sudo nano /etc/vpnc/fritz.conf
 
-
+############# begin file
 IPSec gateway w8mtksnqlsqnszfy.myfritz.net
 
 IKE DH Group dh2
@@ -86,7 +86,18 @@ sudo vpnc-connect fritz
 #Interface mode tap
 #Script /etc/vpnc/fb-script.sh
 
+############# end file
 
+regular checking if connected:
+sudo nano /usr/local/sbin/checkvpn.sh
+
+#!/bin/bash
+if ifconfig tun0 &> /dev/null; then echo "---VPN active---"; else sudo vpnc; fi
+
+sudo chmod +x /usr/local/sbin/checkvpn.sh
+
+sudo crontab -e
+*/1 * * * * /usr/local/sbin/checkvpn.sh
 
 
 //MQTT CLient

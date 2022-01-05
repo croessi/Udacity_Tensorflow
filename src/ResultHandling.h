@@ -55,7 +55,7 @@ public:
             }
             catch (...)
             {
-                cout << "  MQTT Server not connected - will try again!" << endl;
+                cout << "MQTT Server not connected - will try again!" << endl;
                 waitKey(10000);
             }
         }

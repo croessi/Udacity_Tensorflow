@@ -35,7 +35,7 @@ void VideoServerClass::SessionRunLoop()
       //x264enc tune=zerolatency speed-preset=ultrafast
       //video.open("appsrc ! videoconvert ! x264enc me=hex tune=zerolatency speed-preset=ultrafast key-int-max=50 intra-refresh=true ! h264parse ! rtph264pay config-interval=5 pt=96 ! udpsink host=" + dest_IP+ " port=5000 sync=false",0, 20, frame.size(), true);
       int fourcc = VideoWriter::fourcc('H', '2', '6', '4');
-      _video.open(_outputPipe + _dest_IP + " port=" + to_string(_outputPort) + "sync=false", CAP_GSTREAMER, fourcc, 5, frame->size(), true);
+      _video.open(_outputPipe + _dest_IP + " port=" + to_string(_outputPort) + " sync=false", CAP_GSTREAMER, fourcc, 5, frame->size(), true);
 
       if (!_video.isOpened())
       {
