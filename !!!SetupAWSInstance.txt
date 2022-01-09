@@ -58,6 +58,8 @@ df //used disk size
 //GSTREAMER
 sudo apt-get install gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav
 
+//Tensorflow Build on Rapsi
+https://qengineering.eu/install-tensorflow-2-lite-on-raspberry-pi-4.html
 
 //VPN
 
