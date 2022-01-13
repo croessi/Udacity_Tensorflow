@@ -16,12 +16,16 @@ find_package(OpenCV 4.1 REQUIRED)
 # Find all executables
 file(GLOB project_SRCS src/*.cpp)# src/*.h)
 
+include_directories(~/tensorflow)
+link_directories(~/tensorflow/tensorflow/lite/tools/make/gen/rpi_armv7l/lib)
+
+
 add_executable(Udacity-Tensorflow ${project_SRCS})
 
 #include_directories (/usr/include/gstreamer-1.0 /usr/include/glib-2.0 /lib/x86_64-linux-gnu/glib-2.0/include)
 
 #target_link_libraries(Udacity-Tensorflow ${OpenCV_LIBRARIES} ${X11_LIBRARIES} tensorflow Threads::Threads PkgConfig::deps)
-target_link_libraries(Udacity-Tensorflow ${OpenCV_LIBRARIES} ${PAHO_CPP_LIB} ${PAHO_C_LIB} paho-mqtt3c paho-mqtt3a paho-mqttpp3 tensorflow Threads::Threads)
+target_link_libraries(Udacity-Tensorflow ${OpenCV_LIBRARIES} ${PAHO_CPP_LIB} ${PAHO_C_LIB} paho-mqtt3c paho-mqtt3a paho-mqttpp3 tensorflow-lite dl pthread Threads::Threads)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})

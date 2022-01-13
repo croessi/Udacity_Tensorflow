@@ -11,7 +11,7 @@
 #include <sstream>
 #include <string>
 
-#include "TensorProcessor.h"
+#include "TensorLiteProcessor.h"
 #include "Statistics.h"
 
 class ResultHandlerClass

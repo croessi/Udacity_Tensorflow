@@ -16,6 +16,7 @@
 #include "tensorflow/lite/interpreter.h"
 #include "tensorflow/lite/kernels/register.h"
 #include "tensorflow/lite/model.h"
+#include "tensorflow/lite/optional_debug_tools.h"
 
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
@@ -48,6 +49,14 @@ struct BoundingBox_t
   float y2;
   float x2;
 };
+
+typedef struct BoundingBoxUint8_t
+{
+  uint8_t top;
+  uint8_t left;
+  uint8_t bottom;
+  uint8_t right;
+} BoundingBoxUint8_t;
 
 class DetectionResultClass
 {
@@ -126,37 +135,36 @@ public:
     return *this;
   }
 };
-^
-    // generic Detector Class
-    class DetectorLiteClass
+
+// generic Detector Class
+class DetectorLiteClass
 {
 protected:
   DetectorLiteClass(string PtoModel) : _pathToModel(PtoModel){};
 
 public:
-  DetectorClass() = delete;
-  ~DetectorClass(){};
+  DetectorLiteClass() = delete;
+  ~DetectorLiteClass(){};
 
   virtual const string GetDetectorName() = 0;
-  virtual void SetImageSize(const int w, const int h) = 0;
-  virtual void FeedInterpreter(unique_ptr<tflite::Interpreter> &Interpreter, const Mat &_image) = 0;
-  virtual void ProcessResults(DetectionResultClass &SessionResult, TF_Tensor **OutputValues, int width, int heigth) = 0;
+  virtual void FeedInterpreter(tflite::Interpreter &Interpreter, const Mat &_image) = 0;
+  virtual void ProcessResults(unique_ptr<tflite::Interpreter> &Interpreter, DetectionResultClass &SessionResult) = 0;
 
   const string _pathToModel;
 
-  vector<TensorDescription> &GetOutputTensorDescriptions() { return _outputTensorDescriptions; }
-  const TensorDescription &GetInputTensorDescription() { return _inputTensorDescription; }
-  const int GetImageWidth() { return _inputTensorDescription.Width; }
-  const int GetImageHeigth() { return _inputTensorDescription.Height; }
+  //vector<TensorDescription> &GetOutputTensorDescriptions() { return _outputTensorDescriptions; }
+  //const TensorDescription &GetInputTensorDescription() { return _inputTensorDescription; }
+  //const int GetImageWidth() { return _inputTensorDescription.Width; }
+  //const int GetImageHeigth() { return _inputTensorDescription.Height; }
 
-  const int GetInputTensorSize() { return 1; }
+  //const int GetInputTensorSize() { return 1; }
 
-  const string tag;
-  const string signature;
+  //const string tag;
+  //const string signature;
 
 protected:
-  vector<TensorDescription> _outputTensorDescriptions;
-  TensorDescription _inputTensorDescription;
+  //vector<TensorDescription> _outputTensorDescriptions;
+  //TensorDescription _inputTensorDescription;
 };
 
 //specific class for Mobilenet v1
@@ -164,15 +172,15 @@ protected:
 class MobilenetV1Class : public DetectorLiteClass
 {
 public:
-  MobilenetV2Class(string &PathToModel) : DetectorClass(PathToModel, "serve", "serving_default", TensorDescription("serving_default_input_tensor", TF_UINT8, 0, {1, -1, -1, 3}))
+  MobilenetV1Class(string &PathToModel) : DetectorLiteClass(PathToModel)
   {
     string filename = _pathToModel + "/" + "mscoco_label_map.pbtxt";
-
     _detClasses = ReadClasses2Labels(filename);
   }
-  ~MobilenetV2Class(){};
 
-  void FeedInterpreter(unique_ptr<tflite::Interpreter> &Interpreter, const Mat &_image)
+  ~MobilenetV1Class(){};
+
+  void FeedInterpreter(tflite::Interpreter &interpreter, const Mat &image)
   {
     /*
     unsigned char *input = (unsigned char *)(_image.data);
@@ -186,53 +194,59 @@ public:
       }
     }*/
 
+    // Get Input and Output tensors info
+    int in_id = interpreter.inputs()[0];
+    TfLiteTensor *in_tensor = interpreter.tensor(in_id);
+    uint8_t *input = in_tensor->data.uint8;
+
     //copy image into input tensor
-    uint8_t *input = interpreter->typed_input_tensor<uint8_t>(0);
-    uint8_t *image = (uint8_t *)_image.data;
+    //uint8_t *input = interpreter.typed_input_tensor<uint8_t>(0);
 
-    for (int i = 0; i < _image.rows * _image.cols; i++)
-    {
-      input[i] = *image[i];
-    }
-  }
+    //cout << "Pointer to Input Tensor: " << *input << endl;
+    //uint8_t *image = (uint8_t *)_image.data;
 
-  void SetImageSize(const int w, const int h)
-  {
-    _inputTensorDescription.Width = w;
-    _inputTensorDescription.Height = h;
-    _inputTensorDescription.dims = {1, h, w, 3};
+    //put tensor data in Mat object
+    Mat resized(300, 300, CV_8UC3, in_tensor->data.uint8);
+
+    //cout << "Resizing" << endl;
+    resize(image, resized, Size(300, 300));
+    //memcpy(input, resized.data, 300*300*sizeof(unsigned char));
   }
 
   const string GetDetectorName() override
   {
-    return "MobilenetV2Class";
+    return "MobilenetV1";
   }
 
-  unique_ptr<Mat> ConvertImage(const Mat &OpenCVImage) override
+  void ProcessResults(unique_ptr<tflite::Interpreter> &Interpreter, DetectionResultClass &SessionResult) override
   {
-    Mat cp;
-    OpenCVImage.copyTo(cp);
-    return (make_unique<Mat>(move(cp)));
-  }
+    //T *output = interpreter->typed_output_tensor<T>(i);
 
-  void ProcessResults(DetectionResultClass &SessionResult, TF_Tensor **OutputValues, int width, int heigth) override
-  {
     //decode detection
-    int num_detections = *(float *)(TF_TensorData(OutputValues[5]));
+    int num_detections = Interpreter->typed_output_tensor<float>(3)[0];
+    cout << "Decoding " << num_detections << " detections." << endl;
+
     for (int i = 0; i < num_detections; i++)
     {
       Detection_t Detection;
-      Detection.score = ((float *)TF_TensorData(OutputValues[4]))[i];
-      Detection.detclass = ((float *)TF_TensorData(OutputValues[2]))[i];
+      Detection.score = Interpreter->typed_output_tensor<float>(2)[i];
+      Detection.detclass = (int)(Interpreter->typed_output_tensor<float>(1)[i]);
 
-      BoundingBox_t box = ((BoundingBox_t *)TF_TensorData(OutputValues[1]))[i];
+      //cast float into Bounding Box type
+      float boxf = Interpreter->typed_output_tensor<float>(0)[i];
+      BoundingBoxUint8_t *box = (BoundingBoxUint8_t *)&boxf;
 
-      Detection.BoxTopLeft.x = (int)(box.x1 * width);
-      Detection.BoxTopLeft.y = (int)(box.y1 * heigth);
+      Detection.BoxTopLeft.x = (int)(box->left / 300.0 * SessionResult.GetImage().cols);
+      Detection.BoxTopLeft.y = (int)(1.0 - (box->top / 300.0) * SessionResult.GetImage().rows);
 
-      Detection.BoxBottomRigth.x = (int)(box.x2 * width);
-      Detection.BoxBottomRigth.y = (int)(box.y2 * heigth);
-      Detection.ClassName = _detClasses.find(Detection.detclass)->second;
+      Detection.BoxBottomRigth.x = (int)(box->right / 300.0 * SessionResult.GetImage().cols);
+      Detection.BoxBottomRigth.y = (int)(1.0 - (box->bottom / 300.0) * SessionResult.GetImage().rows);
+
+      //Detection.ClassName = _detClasses.find(Detection.detclass)->second;
+
+      Detection.ClassName = "top: " + to_string((int)box->top) + " left: " + to_string((int)box->left) + " bottom: " + to_string((int)box->bottom) + " right: " + to_string((int)box->right);
+
+      cout << "Box ID " << i << "top: " << (int)box->top << " left: " << (int)box->left << " bottom: " << (int)box->bottom << " right: " << (int)box->right << endl;
 
       SessionResult.AddDetection(move(Detection));
     }

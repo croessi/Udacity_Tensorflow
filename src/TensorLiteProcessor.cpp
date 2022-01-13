@@ -2,6 +2,19 @@
 
 #include <iostream>
 
+std::string getShape(TfLiteTensor* t) {
+  std::string s = "(";
+  int sz = t->dims->size;
+  for(int i=0; i<sz; i++){
+    if (i > 0) {
+        s += ",";
+    }
+    s += std::to_string(t->dims->data[i]);
+  }
+  s += ")";
+  return s;
+}
+
 void TensorLiteProcessorClass::StartProcessorThread()
 {
   _detectorThread = thread(&TensorLiteProcessorClass::SessionRunLoop, this);
@@ -15,11 +28,20 @@ void TensorLiteProcessorClass::StopProcessorThread()
   _detectorThread.join();
 }
 
-TensorLiteProcessorClass::TensorLiteProcessorClass(shared_ptr<DetectorClass> Detector) : _detector(Detector)
+TensorLiteProcessorClass::TensorLiteProcessorClass(shared_ptr<DetectorLiteClass> Detector) : _detector(Detector)
+{
+}
+
+TensorLiteProcessorClass::~TensorLiteProcessorClass()
+{
+}
+
+void TensorLiteProcessorClass::SessionRunLoop()
 {
 
-  // Load model
-  std::unique_ptr<tflite::FlatBufferModel> model = tflite::FlatBufferModel::BuildFromFile(_detector->_pathToModel);
+// Load model
+  std::unique_ptr<tflite::FlatBufferModel> model = tflite::FlatBufferModel::BuildFromFile(_detector->_pathToModel.c_str());
+
   if (model)
     cout << "Loading Model " << _detector->GetDetectorName() << " from: " << _detector->_pathToModel << " was successfull\n";
 
@@ -31,21 +53,38 @@ TensorLiteProcessorClass::TensorLiteProcessorClass(shared_ptr<DetectorClass> Det
   tflite::InterpreterBuilder builder(*model, resolver);
 
   builder(&_interpreter);
-  if (interpreter)
+  if (_interpreter)
     cout << "Interpreter for " << _detector->GetDetectorName() << " built successfully!\n";
-}
 
-TensorLiteProcessorClass::~TensorLiteProcessorClass()
-{
-}
 
-void TensorLiteProcessorClass::SessionRunLoop()
-{
-  //********* Allocate data for inputs & outputs
-  TF_Tensor **InputValues = (TF_Tensor **)malloc(sizeof(TF_Tensor *) * _detector->GetInputTensorSize());
-  TF_Tensor **OutputValues = (TF_Tensor **)malloc(sizeof(TF_Tensor *) * _detector->GetOutputTensorDescriptions().size());
+  // Get Input and Output tensors info
+  int in_id = _interpreter->inputs()[0];
+  TfLiteTensor* in_tensor = _interpreter->tensor(in_id);
+  auto in_type = in_tensor->type;
+  auto in_shape = getShape(in_tensor).c_str();
+  auto in_name = in_tensor->name;
+  printf("Input Tensor id, name, type, shape: %i, %s, %s(%d), %s\n", in_id, in_name, TfLiteTypeGetName(in_type), in_type, in_shape);
 
-  //DEBUG
+    int out_sz = _interpreter->outputs().size();
+  std::cout << "Output Tensor id, name, type, shape:" << std::endl;
+  for (int i = 0; i < out_sz; i++) {
+    auto t_id = _interpreter->outputs()[i];
+    TfLiteTensor* t = _interpreter->tensor(t_id);
+    auto t_type = t->type;
+    printf("  %i, %s, %s(%d), %s\n", t_id, t->name, TfLiteTypeGetName(t_type), t_type, getShape(t).c_str());
+  }
+
+
+  //allocate tesnors in context of sessions run 
+  if(_interpreter->AllocateTensors() != kTfLiteOk){
+    printf("Failed to allocate tensors\n");
+    exit(1);
+  }
+  printf("AllocateTensors Ok\n");
+
+  _interpreter->SetNumThreads(4);
+  //_interpreter->SetAllowFp16PrecisionForFp32(true);
+
 
   while (true)
   {
@@ -55,64 +94,36 @@ void TensorLiteProcessorClass::SessionRunLoop()
     //empty frame --> cleanup and exit thread
     if (SessionResult.GetImage().size[0] == 0 || SessionResult.GetImage().size[1] == 0)
     {
-      free(InputValues);
-      free(OutputValues);
       return;
     }
 
-    //supporting values
-    int height = SessionResult.GetImage().size[0];
-    int width = SessionResult.GetImage().size[1];
-
-    //pass image dims to detector
-    if (_detector->GetImageHeigth() == -1 || _detector->GetImageWidth() == -1)
-      _detector->SetImageSize(width, height);
-
-    _detector->
-        //get Input Tensor Description
-        TensorDescription InputDesc = _detector->GetInputTensorDescription();
-    int ndata = InputDesc.dims.size() * height * width * TF_DataTypeSize(InputDesc.Type);
-
-    //transform image to make it fit for the input tensor
-    unique_ptr<Mat> InputImage(_detector->ConvertImage(SessionResult.GetImage()));
-
-    //TF_Tensor *int_tensor = TF_NewTensor(_detector->GetInputTensorDescription().Type, InputDesc.dims.data(), InputDesc.dims.size(), InputImage->data, ndata, &NoOpDeallocator, 0);
-
-    TF_Tensor *int_tensor = TF_NewTensor(_detector->GetInputTensorDescription().Type, InputDesc.dims.data(), InputDesc.dims.size(), SessionResult.GetImage().data, ndata, &NoOpDeallocator, 0);
-
-    if (int_tensor == NULL)
-      printf("ERROR: Failed to contruct Input Tensor\n");
-
-    InputValues[0] = int_tensor;
+    //cout << "Feed Interpreter" << endl;
+    _detector->FeedInterpreter(*_interpreter.get(), SessionResult.GetImage());
 
     //Run the Session
     auto t1 = chrono::high_resolution_clock::now();
 
     // Run inference
-    auto InterpreterResut = interpreter->Invoke();
+    //cout << "Run inference" << endl;
+    auto InterpreterResut = _interpreter->Invoke();
 
-    printf("\n\n=== Post-invoke Interpreter State ===\n");
-    tflite::PrintInterpreterState(interpreter.get());
+    //printf("\n\n=== Post-invoke Interpreter State ===\n");
+    //tflite::PrintInterpreterState(_interpreter.get());
 
     auto t2 = chrono::high_resolution_clock::now();
     auto ms_int = chrono::duration_cast<chrono::milliseconds>(t2 - t1);
 
     SessionResult.runtime = (int)ms_int.count();
 
-    if (InterpreterResut == kTfLiteOk))
+    if (InterpreterResut == kTfLiteOk)
       cout << "Session ran through in " << ms_int.count() << "ms\n";
     else
-      cout << "Session run error :" << TF_Message(_status);
+      cout << "Session run error :" << InterpreterResut;
 
     //interpretation of results
-    _detector->ProcessResults(SessionResult, OutputValues, width, height);
+    _detector->ProcessResults(_interpreter, SessionResult);
 
     //cleanup
-    TF_DeleteTensor(int_tensor);
-    for (int i = 0; i < _detector->GetOutputTensorDescriptions().size(); i++)
-    {
-      TF_DeleteTensor(OutputValues[i]);
-    }
 
     //move back detection via output que
     output_queue.sendAndClear(move(SessionResult));

@@ -54,6 +54,7 @@
         "mutex": "cpp",
         "future": "cpp",
         "map": "cpp",
-        "iomanip": "cpp"
+        "iomanip": "cpp",
+        "ranges": "cpp"
     }
 }

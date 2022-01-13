@@ -18,7 +18,8 @@
 
 #include "VideoReader.h"
 #include "VideoServer.h"
-#include "TensorProcessor.h"
+//
+#include "TensorLiteProcessor.h"
 #include "MessageQueue.h"
 #include "MessageQueue.cpp" //neded to avoid linker issues^
 #include "ResultHandling.h"
@@ -41,7 +42,8 @@ int main(int argc, char *argv[])
   setenv("OPENCV_FFMPEG_CAPTURE_OPTIONS", "rtsp_transport;udp", 1);
 
   string InstanceName = "DetectorPi_Guard";
-  string PathToModel = "../ssd_mobilenet_v2";
+  //string PathToModel = "../ssd_mobilenet_v2";
+  string PathToModel = "../lite-model_ssd_mobilenet_v1_1_metadata_2.tflite";
 
   //const string RTSP_URL = "rtsp://192.168.0.49:554/ch0_1.h264";
   string Cam_URL = "rtspsrc location=rtsp://192.168.0.49:554/ch0_1.h264 ! rtph264depay ! h264parse ! avdec_h264 ! videoconvert ! appsink drop=true max-buffers=2";
@@ -181,7 +183,8 @@ int main(int argc, char *argv[])
   //future<shared_ptr<MobilenetV2Class>> futMobilenet = promMobilenet.get_future();
 
   //get Detector Objet from thread
-  shared_ptr<MobilenetV2Class> MobilenetV2 = make_shared<MobilenetV2Class>(PathToModel);
+  //shared_ptr<MobilenetV2Class> MobilenetV2 = make_shared<MobilenetV2Class>(PathToModel);
+  shared_ptr<MobilenetV1Class> MobilenetV1 = make_shared<MobilenetV1Class>(PathToModel);
 
   //String PathToModel = "../SSDMobilenetOpenImages4";
   //shared_ptr<MobilenetV2_OIv4Class> MobilenetV2 = make_shared<MobilenetV2_OIv4Class>(PathToModel);
@@ -190,12 +193,13 @@ int main(int argc, char *argv[])
   VideoReader Reader(Cam_URL, scale_factor);
   Reader.StartGrabberThread();
 
+  dest_IP = "192.168.0.26";
   //create VideoServer
   VideoServerClass VideoServer(dest_IP, OutputPipe, OutputPort);
   if (sendDetectorFrame)
     VideoServer.StartVideoServerThread();
 
-  //dest_IP = "192.168.178.36";
+  dest_IP = "192.168.178.36";
   //Class to manage all results incl sending via MQTT
   ResultHandlerClass ResultHandler(dest_IP, sendDetectorFrame, MQTTuser, MQTTpassword, InstanceName);
 
@@ -203,7 +207,9 @@ int main(int argc, char *argv[])
   //std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
   //load Model into processor & start detector thread
-  TensorProcessorClass TensorProcessor(MobilenetV2);
+  //TensorProcessorClass TensorProcessor(MobilenetV2);
+  //TensorProcessor.StartProcessorThread();
+  TensorLiteProcessorClass TensorProcessor(MobilenetV1);
   TensorProcessor.StartProcessorThread();
 
   //counter for average runtime of main loop
@@ -224,7 +230,7 @@ int main(int argc, char *argv[])
     {
       TensorProcessor.input_queue.sendAndClear(move(frame));
       DetectionResultClass SessionOutput(TensorProcessor.output_queue.receive());
-      cout << "Detection Score of ID 0: " << SessionOutput.GetDetections()[0].score << " for " << SessionOutput.GetDetections()[0].ClassName << " at TopLeft Postion: " << SessionOutput.GetDetections()[0].BoxTopLeft.x << "," << SessionOutput.GetDetections()[0].BoxTopLeft.y << "\n";
+      cout << "Detection Score of ID 0: " << SessionOutput.GetDetections()[0].score << " for " << SessionOutput.GetDetections()[0].ClassName << " at:(" << SessionOutput.GetDetections()[0].BoxTopLeft.x << "," << SessionOutput.GetDetections()[0].BoxTopLeft.y << "),(" << SessionOutput.GetDetections()[0].BoxBottomRigth.x << "," << SessionOutput.GetDetections()[0].BoxBottomRigth.y << ")\n";
 
       ResultHandler.ResultHandling(SessionOutput, detection_threshold, boxwidth_threshold);
       if (sendDetectorFrame)
