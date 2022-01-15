@@ -50,14 +50,6 @@ struct BoundingBox_t
   float x2;
 };
 
-typedef struct BoundingBoxUint8_t
-{
-  uint8_t top;
-  uint8_t left;
-  uint8_t bottom;
-  uint8_t right;
-} BoundingBoxUint8_t;
-
 class DetectionResultClass
 {
 
@@ -168,13 +160,13 @@ protected:
 };
 
 //specific class for Mobilenet v1
-// https://tfhub.dev/tensorflow/ssd_mobilenet_v1
+// https://tfhub.dev/tensorflow/lite-model/ssd_mobilenet_v1/1/metadata/2
 class MobilenetV1Class : public DetectorLiteClass
 {
 public:
   MobilenetV1Class(string &PathToModel) : DetectorLiteClass(PathToModel)
   {
-    string filename = _pathToModel + "/" + "mscoco_label_map.pbtxt";
+    string filename = "../labelmap.txt";
     _detClasses = ReadClasses2Labels(filename);
   }
 
@@ -182,35 +174,17 @@ public:
 
   void FeedInterpreter(tflite::Interpreter &interpreter, const Mat &image)
   {
-    /*
-    unsigned char *input = (unsigned char *)(_image.data);
-    for (int j = 0; j < _image.rows; j++)
-    {
-      for (int i = 0; i < _image.cols; i++)
-      {
-        unsigned char b = input[_image.step * j + i];
-        unsigned char g = input[_image.step * j + i + 1];
-        unsigned char r = input[_image.step * j + i + 2];
-      }
-    }*/
-
     // Get Input and Output tensors info
     int in_id = interpreter.inputs()[0];
     TfLiteTensor *in_tensor = interpreter.tensor(in_id);
     uint8_t *input = in_tensor->data.uint8;
 
-    //copy image into input tensor
-    //uint8_t *input = interpreter.typed_input_tensor<uint8_t>(0);
-
-    //cout << "Pointer to Input Tensor: " << *input << endl;
-    //uint8_t *image = (uint8_t *)_image.data;
-
     //put tensor data in Mat object
     Mat resized(300, 300, CV_8UC3, in_tensor->data.uint8);
 
     //cout << "Resizing" << endl;
+    //resize directly into memory of input tensor
     resize(image, resized, Size(300, 300));
-    //memcpy(input, resized.data, 300*300*sizeof(unsigned char));
   }
 
   const string GetDetectorName() override
@@ -233,20 +207,27 @@ public:
       Detection.detclass = (int)(Interpreter->typed_output_tensor<float>(1)[i]);
 
       //cast float into Bounding Box type
-      float boxf = Interpreter->typed_output_tensor<float>(0)[i];
-      BoundingBoxUint8_t *box = (BoundingBoxUint8_t *)&boxf;
+      float top = Interpreter->typed_output_tensor<float>(0)[i * 4 + 0];
+      float left = Interpreter->typed_output_tensor<float>(0)[i * 4 + 1];
+      float bottom = Interpreter->typed_output_tensor<float>(0)[i * 4 + 2];
+      float right = Interpreter->typed_output_tensor<float>(0)[i * 4 + 3];
 
-      Detection.BoxTopLeft.x = (int)(box->left / 300.0 * SessionResult.GetImage().cols);
-      Detection.BoxTopLeft.y = (int)(1.0 - (box->top / 300.0) * SessionResult.GetImage().rows);
+      //BoundingBoxUint8_t *box = (BoundingBoxUint8_t *)&boxf;
 
-      Detection.BoxBottomRigth.x = (int)(box->right / 300.0 * SessionResult.GetImage().cols);
-      Detection.BoxBottomRigth.y = (int)(1.0 - (box->bottom / 300.0) * SessionResult.GetImage().rows);
+      Detection.BoxTopLeft.x = (int)(left * SessionResult.GetImage().cols);
+      Detection.BoxTopLeft.y = (int)(top * SessionResult.GetImage().rows);
 
-      //Detection.ClassName = _detClasses.find(Detection.detclass)->second;
+      Detection.BoxBottomRigth.x = (int)(right * SessionResult.GetImage().cols);
+      Detection.BoxBottomRigth.y = (int)(bottom * SessionResult.GetImage().rows);
 
-      Detection.ClassName = "top: " + to_string((int)box->top) + " left: " + to_string((int)box->left) + " bottom: " + to_string((int)box->bottom) + " right: " + to_string((int)box->right);
+      map<int, string>::iterator iter = _detClasses.find(Detection.detclass);
 
-      cout << "Box ID " << i << "top: " << (int)box->top << " left: " << (int)box->left << " bottom: " << (int)box->bottom << " right: " << (int)box->right << endl;
+      if (iter != _detClasses.end())
+        Detection.ClassName = iter->second;
+
+      //Detection.ClassName = "top: " + to_string(top) + " left: " + to_string(left) + " bottom: " + to_string(bottom) + " right: " + to_string(right);
+
+      //cout << "Box ID " << i << " top: " << top << " left: " << left << " bottom: " << bottom << " right: " << right << endl;
 
       SessionResult.AddDetection(move(Detection));
     }

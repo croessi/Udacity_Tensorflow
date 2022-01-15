@@ -11,5 +11,6 @@
 using namespace std;
 
 map<int, string> ReadClasses2Labels(string &filename);
+map<int, string> ReadClasses2LabelsSSDV1(string &filename);
 
 #endif

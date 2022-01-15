@@ -34,3 +34,25 @@ map<int, string> ReadClasses2Labels(string &filename)
     }
     return ret;
 }
+
+map<int, string> ReadClasses2LabelsSSDV1(string &filename)
+{
+    map<int, string> ret;
+
+    ifstream myfile(filename); //(filename, s.binary | s.trunc | s.in);
+    if (!myfile.is_open())
+    {
+        std::cout << "failed to open " << filename << '\n';
+    }
+    else
+    {
+
+        string line;
+        int lineID = 0;
+        while (getline(myfile, line))
+        {
+            ret[lineID] = line;
+        }
+    }
+    return ret;
+}

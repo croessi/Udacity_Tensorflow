@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
   string PathToModel = "../lite-model_ssd_mobilenet_v1_1_metadata_2.tflite";
 
   //const string RTSP_URL = "rtsp://192.168.0.49:554/ch0_1.h264";
-  string Cam_URL = "rtspsrc location=rtsp://192.168.0.49:554/ch0_1.h264 ! rtph264depay ! h264parse ! avdec_h264 ! videoconvert ! appsink drop=true max-buffers=2";
+  string Cam_URL = "rtspsrc location=rtsp://192.168.0.49:554/ch0_1.h264 ! rtph264depay ! h264parse ! videoconvert ! appsink drop=true max-buffers=2";
 
   float scale_factor = 1.0;
   string dest_IP = "192.168.178.36";

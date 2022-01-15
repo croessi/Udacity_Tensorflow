@@ -56,7 +56,23 @@ sudo apt-get autoremove
 df //used disk size
 
 //GSTREAMER
+
+sudo apt-get install libx264-dev libjpeg-dev
+sudo apt-get install libgstreamer1.0-dev \
+     libgstreamer-plugins-base1.0-dev \
+     libgstreamer-plugins-bad1.0-dev \
+     gstreamer1.0-plugins-ugly \
+     gstreamer1.0-tools \
+     gstreamer1.0-gl \
+     gstreamer1.0-gtk3 
+
+     
 sudo apt-get install gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav
+
+// H264 HW acceleration for Rapsi
+sudo apt-get install libomxil-bellagio-dev
+
+sudo apt install gst-omx-listcomponents
 
 //Tensorflow Build on Rapsi
 https://qengineering.eu/install-tensorflow-2-lite-on-raspberry-pi-4.html

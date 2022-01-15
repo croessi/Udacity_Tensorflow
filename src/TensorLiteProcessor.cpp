@@ -2,12 +2,15 @@
 
 #include <iostream>
 
-std::string getShape(TfLiteTensor* t) {
+std::string getShape(TfLiteTensor *t)
+{
   std::string s = "(";
   int sz = t->dims->size;
-  for(int i=0; i<sz; i++){
-    if (i > 0) {
-        s += ",";
+  for (int i = 0; i < sz; i++)
+  {
+    if (i > 0)
+    {
+      s += ",";
     }
     s += std::to_string(t->dims->data[i]);
   }
@@ -38,8 +41,7 @@ TensorLiteProcessorClass::~TensorLiteProcessorClass()
 
 void TensorLiteProcessorClass::SessionRunLoop()
 {
-
-// Load model
+  // Load model - has to happen in this thread
   std::unique_ptr<tflite::FlatBufferModel> model = tflite::FlatBufferModel::BuildFromFile(_detector->_pathToModel.c_str());
 
   if (model)
@@ -56,27 +58,27 @@ void TensorLiteProcessorClass::SessionRunLoop()
   if (_interpreter)
     cout << "Interpreter for " << _detector->GetDetectorName() << " built successfully!\n";
 
-
   // Get Input and Output tensors info
   int in_id = _interpreter->inputs()[0];
-  TfLiteTensor* in_tensor = _interpreter->tensor(in_id);
+  TfLiteTensor *in_tensor = _interpreter->tensor(in_id);
   auto in_type = in_tensor->type;
   auto in_shape = getShape(in_tensor).c_str();
   auto in_name = in_tensor->name;
   printf("Input Tensor id, name, type, shape: %i, %s, %s(%d), %s\n", in_id, in_name, TfLiteTypeGetName(in_type), in_type, in_shape);
 
-    int out_sz = _interpreter->outputs().size();
+  int out_sz = _interpreter->outputs().size();
   std::cout << "Output Tensor id, name, type, shape:" << std::endl;
-  for (int i = 0; i < out_sz; i++) {
+  for (int i = 0; i < out_sz; i++)
+  {
     auto t_id = _interpreter->outputs()[i];
-    TfLiteTensor* t = _interpreter->tensor(t_id);
+    TfLiteTensor *t = _interpreter->tensor(t_id);
     auto t_type = t->type;
     printf("  %i, %s, %s(%d), %s\n", t_id, t->name, TfLiteTypeGetName(t_type), t_type, getShape(t).c_str());
   }
 
-
-  //allocate tesnors in context of sessions run 
-  if(_interpreter->AllocateTensors() != kTfLiteOk){
+  //allocate tesnors in context of sessions run
+  if (_interpreter->AllocateTensors() != kTfLiteOk)
+  {
     printf("Failed to allocate tensors\n");
     exit(1);
   }
@@ -84,7 +86,6 @@ void TensorLiteProcessorClass::SessionRunLoop()
 
   _interpreter->SetNumThreads(4);
   //_interpreter->SetAllowFp16PrecisionForFp32(true);
-
 
   while (true)
   {
