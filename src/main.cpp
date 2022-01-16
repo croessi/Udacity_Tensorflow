@@ -18,7 +18,7 @@
 
 #include "VideoReader.h"
 #include "VideoServer.h"
-//
+#include "RTSPServer.h"
 #include "TensorLiteProcessor.h"
 #include "MessageQueue.h"
 #include "MessageQueue.cpp" //neded to avoid linker issues^
@@ -40,6 +40,9 @@ int main(int argc, char *argv[])
 {
 
   setenv("OPENCV_FFMPEG_CAPTURE_OPTIONS", "rtsp_transport;udp", 1);
+
+  RTSPServerClass RTSPServer("");
+  RTSPServer.StartRTSPServerDummy();
 
   string InstanceName = "DetectorPi_Guard";
   //string PathToModel = "../ssd_mobilenet_v2";

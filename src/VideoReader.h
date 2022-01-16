@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <thread>
+#include <vector>
+#include <mutex>
 
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
