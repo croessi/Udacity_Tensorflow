@@ -55,6 +55,11 @@
         "future": "cpp",
         "map": "cpp",
         "iomanip": "cpp",
-        "ranges": "cpp"
+        "ranges": "cpp",
+        "bitset": "cpp",
+        "regex": "cpp",
+        "hash_map": "cpp",
+        "hash_set": "cpp",
+        "*.inc": "cpp"
     }
 }

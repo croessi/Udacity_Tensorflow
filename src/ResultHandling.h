@@ -39,7 +39,7 @@ public:
                                                                                                                                                _InstanceName(InstanceName)
 
     {
-        cout << "Not connected to Homeassistant MQTT Server -> try to connect...\n";
+        cout << "Not connected to Homeassistant MQTT Server -> try to connect...";
 
         mqtt::connect_options connOpts;
         connOpts.set_user_name(_MQTTuser);
@@ -60,7 +60,7 @@ public:
             }
         }
 
-        cout << "  MQTT Server connected" << endl;
+        cout << "MQTT Server connected" << endl;
 
         mqtt::message_ptr msg;
 

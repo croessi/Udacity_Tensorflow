@@ -21,7 +21,7 @@
 #include "RTSPServer.h"
 #include "TensorLiteProcessor.h"
 #include "MessageQueue.h"
-#include "MessageQueue.cpp" //neded to avoid linker issues^
+#include "MessageQueue.cpp" //neded to avoid linker issues
 #include "ResultHandling.h"
 
 using namespace cv;
@@ -36,27 +36,29 @@ The VideoWriter Gstreamer pipe for writing the processed video to a file:
 
 std::string motion_writer_pipe = "appsrc ! autovideoconvert ! v4l2h264enc ! h264parse ! mp4mux ! filesink location = " + savedMotionVideoFullPath; cv::VideoWriter motion_writer = cv::VideoWriter(motion_writer_pipe,cv::CAP_GSTREAMER,frames_per_second,frame_size,true);
 */
+
+MessageQueue<unique_ptr<Mat>> RTSPServerClass::input_queue = MessageQueue<unique_ptr<Mat>>();
+unique_ptr<Mat> RTSPServerClass::_current_frame = nullptr;
+//MatSize RTSPServerClass::_size = MatSize(0);
+
 int main(int argc, char *argv[])
 {
 
   setenv("OPENCV_FFMPEG_CAPTURE_OPTIONS", "rtsp_transport;udp", 1);
-
-  RTSPServerClass RTSPServer("");
-  RTSPServer.StartRTSPServerDummy();
 
   string InstanceName = "DetectorPi_Guard";
   //string PathToModel = "../ssd_mobilenet_v2";
   string PathToModel = "../lite-model_ssd_mobilenet_v1_1_metadata_2.tflite";
 
   //const string RTSP_URL = "rtsp://192.168.0.49:554/ch0_1.h264";
-  string Cam_URL = "rtspsrc location=rtsp://192.168.0.49:554/ch0_1.h264 ! rtph264depay ! h264parse ! videoconvert ! appsink drop=true max-buffers=2";
+  string Cam_URL = "rtspsrc location=rtsp://192.168.0.49:554/ch0_1.h264 ! rtph264depay ! h264parse ! omxh264dec ! videoconvert ! appsink drop=true max-buffers=2";
 
   float scale_factor = 1.0;
   string dest_IP = "192.168.178.36";
 
   float detection_threshold = 0.5; //minimum confidence to process a detection
   float boxwidth_threshold = 0.5;  //maximum size of boxes to filter out huge boundinb boxes
-  int waitInMainLoop = 1000;
+  int waitInMainLoop = 200;
 
   string OutputPipe = "appsrc ! videoconvert ! x264enc tune=zerolatency speed-preset=ultrafast key-int-max=2 ! h264parse ! rtph264pay config-interval=5 pt=96 ! udpsink host=";
   int OutputPort = 5000;
@@ -196,15 +198,20 @@ int main(int argc, char *argv[])
   VideoReader Reader(Cam_URL, scale_factor);
   Reader.StartGrabberThread();
 
-  dest_IP = "192.168.0.26";
+  RTSPServerClass RTSPServer("");
+
+
+  //dest_IP = "192.168.0.26";
   //create VideoServer
-  VideoServerClass VideoServer(dest_IP, OutputPipe, OutputPort);
+  /*VideoServerClass VideoServer(dest_IP, OutputPipe, OutputPort);
   if (sendDetectorFrame)
     VideoServer.StartVideoServerThread();
 
   dest_IP = "192.168.178.36";
+  */
   //Class to manage all results incl sending via MQTT
   ResultHandlerClass ResultHandler(dest_IP, sendDetectorFrame, MQTTuser, MQTTpassword, InstanceName);
+
 
   //give thread som tme to instanciate
   //std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -227,7 +234,10 @@ int main(int argc, char *argv[])
 
     //inital feed of detector pipeline
     if (c1 == 0)
-      TensorProcessor.input_queue.sendAndClear(move(frame));
+    {
+      RTSPServer.StartRTSPServerThread(frame->size);
+      TensorProcessor.input_queue.sendAndClear(move(frame));  
+    }
 
     if (TensorProcessor.output_queue.GetSize() > 0 && c1)
     {
@@ -237,7 +247,8 @@ int main(int argc, char *argv[])
 
       ResultHandler.ResultHandling(SessionOutput, detection_threshold, boxwidth_threshold);
       if (sendDetectorFrame)
-        VideoServer.input_queue.sendAndClear(move(SessionOutput.MoveImage()));
+        RTSPServerClass::input_queue.sendAndClear(move(SessionOutput.MoveImage()));
+        //VideoServer.input_queue.sendAndClear(move(SessionOutput.MoveImage()));
     }
     //check if frame has not been moved to detector -> send
     //if (frame.get())

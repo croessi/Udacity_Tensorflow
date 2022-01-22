@@ -48,10 +48,10 @@ map<int, string> ReadClasses2LabelsSSDV1(string &filename)
     {
 
         string line;
-        int lineID = 0;
+        int lineID = -1;
         while (getline(myfile, line))
         {
-            ret[lineID] = line;
+            ret[lineID++] = line;
         }
     }
     return ret;

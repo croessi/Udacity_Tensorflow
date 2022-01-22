@@ -167,7 +167,7 @@ public:
   MobilenetV1Class(string &PathToModel) : DetectorLiteClass(PathToModel)
   {
     string filename = "../labelmap.txt";
-    _detClasses = ReadClasses2Labels(filename);
+    _detClasses = ReadClasses2LabelsSSDV1(filename);
   }
 
   ~MobilenetV1Class(){};
