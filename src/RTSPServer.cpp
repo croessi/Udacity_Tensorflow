@@ -23,6 +23,8 @@ void RTSPServerClass::StartRTSPServerThread(MatSize size)
 
   g_width = size[1];
   g_height = size[0];
+
+
   _RTSPServerThread = thread(&RTSPServerClass::StartRTSPServer, this, size);
   //_RTSPServerThread = thread(&RTSPServerClass::StartRTSPServerDummy, this);
 }
@@ -46,12 +48,40 @@ void RTSPServerClass::RTSP_need_data(GstElement *appsrc, guint unused, MyContext
   guint size;
   GstFlowReturn ret;
 
+  // cout << "---------------Need Data--------------------";
+ 
+  
+  /*
   size = g_width * g_height * 3;
+  unsigned char tempframe[size];
 
-  buffer = gst_buffer_new_allocate (NULL, size, NULL);
+  for (int i =0; i<size; i)
+  {
+    tempframe[i++]=0;
+    tempframe[i++]=0;
+    tempframe[i++]=255;
+  }*/
+
+  if (input_queue.GetSize() > 0)
+  {
+    _current_frame = RTSPServerClass::input_queue.receive();
+    cout << "-------------------------------------------received Frame with size: " << _current_frame->size[1] << "x" << _current_frame->size[0] << endl;
+  }
+
+  if (!_current_frame)
+  {
+    cout << "Have no frame yet --> Create empty frame!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
+    _current_frame = make_unique<Mat>(g_width, g_height, CV_8UC3);
+  }
+
+
+  buffer = gst_buffer_new_wrapped_full((GstMemoryFlags)0, (gpointer)(_current_frame->data), size, 0, size, NULL, NULL);
+
+
+ //buffer = gst_buffer_new_allocate (NULL, size, NULL);
 
   /* this makes the image black/white */
-  gst_buffer_memset (buffer, 0, ctx->white ? 0xff : 0x0, size);
+  //gst_buffer_memset (buffer, 0, ctx->white ? 0xff : 0x0, size);
 
   ctx->white = !ctx->white;
 
@@ -63,11 +93,11 @@ void RTSPServerClass::RTSP_need_data(GstElement *appsrc, guint unused, MyContext
   g_signal_emit_by_name (appsrc, "push-buffer", buffer, &ret);
   gst_buffer_unref (buffer);
 
-  return;
+  /*
 
   //get frame if availbale
 
-  /*
+
   if (input_queue.GetSize() > 0)
   {
     _current_frame = RTSPServerClass::input_queue.receive();
@@ -84,7 +114,7 @@ void RTSPServerClass::RTSP_need_data(GstElement *appsrc, guint unused, MyContext
     cout << "Have no frame yet --> Create empty frame!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
     _current_frame = make_unique<Mat>(g_width, g_height, CV_8UC3);
   }
-*/
+
   //_current_frame->setTo(cv::Scalar(125,50,50));
   //size = _current_frame->size[0] * _current_frame->size[1] * 3;
 
@@ -101,12 +131,12 @@ void RTSPServerClass::RTSP_need_data(GstElement *appsrc, guint unused, MyContext
 
   buffer = gst_buffer_new_allocate(NULL, size, NULL);
 
-  /* this makes the image black/white */
+  // this makes the image black/white
   gst_buffer_memset(buffer, 0, ctx->white ? 0xff : 0x0, size);
 
   ctx->white = !ctx->white;
 
-  /* increment the timestamp every 1/2 second */
+  // increment the timestamp every 1/2 second
   GST_BUFFER_PTS(buffer) = ctx->timestamp;
   GST_BUFFER_DURATION(buffer) = gst_util_uint64_scale_int(1, GST_SECOND, 2);
   ctx->timestamp += GST_BUFFER_DURATION(buffer);
@@ -120,6 +150,9 @@ void RTSPServerClass::RTSP_need_data(GstElement *appsrc, guint unused, MyContext
   //g_signal_emit_by_name(appsrc, "push-buffer", buffer, &ret);
   //g_signal_emit_by_name(appsrc, "push-buffer", _current_frame->data, &ret);
   // gst_buffer_unref(buffer);
+
+  */
+
 }
 
 /* called when a new media pipeline is constructed. We can query the
@@ -146,7 +179,7 @@ void RTSPServerClass::RTSP_media_configure(GstRTSPMediaFactory *factory, GstRTSP
                                    "format", G_TYPE_STRING, "RGB",
                                    "width", G_TYPE_INT, g_width,
                                    "height", G_TYPE_INT, g_height,
-                                   "framerate", GST_TYPE_FRACTION, 15, 1, NULL), //0,5frames /sec
+                                   "framerate", GST_TYPE_FRACTION, 1, 2, NULL), //0,5frames /sec
                NULL);
 
   /*
@@ -158,20 +191,17 @@ void RTSPServerClass::RTSP_media_configure(GstRTSPMediaFactory *factory, GstRTSP
                                    "framerate", GST_TYPE_FRACTION, 1, 2, NULL), //0,5frames /sec
                NULL);
 */
-  ctx = g_new0(MyContext, 1);
+  ctx = g_new0 (MyContext, 1);
   ctx->white = FALSE;
   ctx->timestamp = 0;
   /* make sure ther datais freed when the media is gone */
-  g_object_set_data_full(G_OBJECT(media), "my-extra-data", ctx, (GDestroyNotify)g_free);
+  g_object_set_data_full (G_OBJECT (media), "my-extra-data", ctx,
+      (GDestroyNotify) g_free);
 
   /* install the callback that will be called when a buffer is needed */
-  g_signal_connect(appsrc, "need-data", (GCallback)&RTSPServerClass::RTSP_need_data, ctx);
-
-  //debug output pipe
-  GST_DEBUG_BIN_TO_DOT_FILE(GST_BIN(element), GST_DEBUG_GRAPH_SHOW_ALL, "outpupt_pipe");
-
-  gst_object_unref(appsrc);
-  gst_object_unref(element);
+  g_signal_connect (appsrc, "need-data", (GCallback) RTSPServerClass::RTSP_need_data, ctx);
+  gst_object_unref (appsrc);
+  gst_object_unref (element);
 }
 
 void RTSPServerClass::StartRTSPServer(MatSize size)
@@ -194,15 +224,17 @@ void RTSPServerClass::StartRTSPServer(MatSize size)
   _factory = gst_rtsp_media_factory_new();
   //gst_rtsp_media_factory_set_launch(_factory, "( appsrc name=mysrc ! videoconvert ! omxh264enc ! rtph264pay name=pay0 pt=96 )");
 
-  //gst_rtsp_media_factory_set_launch(_factory, "( appsrc name=mysrc ! videoconvert ! x264enc ! rtph264pay name=pay0 pt=96 )");
-  gst_rtsp_media_factory_set_launch(_factory, "( appsrc name=mysrc ! video/x-raw,format=RGB,width=640,height=360,framerate=15/1 ! videoconvert ! omxh264enc ! rtph264pay name=pay0 pt=96 )");
+  //WORKING gst_rtsp_media_factory_set_launch(_factory, "( appsrc name=mysrc ! videoconvert ! x264enc ! rtph264pay name=pay0 pt=96 )");
+  gst_rtsp_media_factory_set_launch(_factory, "( appsrc name=mysrc ! videoconvert ! x264enc ! rtph264pay name=pay0 pt=96 )");
+  //gst_rtsp_media_factory_set_launch(_factory, "( appsrc name=mysrc ! video/x-raw,format=RGB,width=640,height=360,framerate=1/2 ! videoconvert ! omxh264enc ! rtph264pay name=pay0 pt=96 )");
+  //gst_rtsp_media_factory_set_launch(_factory, "( appsrc name=mysrc ! video/x-raw,format=RGB,width=640,height=360,framerate=15/1 ! videoconvert ! x264enc ! rtph264pay name=pay0 pt=96 )");
   //gst_rtsp_media_factory_set_launch(_factory, "( appsrc name=mysrc ! video/x-raw,format=RGB,width=640,height=360,framerate=15/1 ! videoconvert ! omxh264enc ! rtph264pay name=pay0 pt=96 )");
 
   //! video/x-raw,width=352,height=288,framerate=15/1 ! omxh264enc ! rtph264pay name=pay0 pt=96 "
 
   /* notify when our media is ready, This is called whenever someone asks for
    * the media and a new pipeline with our appsrc is created */
-  g_signal_connect(_factory, "media-configure", (GCallback)&RTSPServerClass::RTSP_media_configure, NULL);
+  g_signal_connect(_factory, "media-configure", (GCallback)RTSPServerClass::RTSP_media_configure, NULL);
   //this->media_configure
   /* attach the test factory to the /test url */
   gst_rtsp_mount_points_add_factory(_mounts, "/test", _factory);
