@@ -29,17 +29,10 @@ using namespace std;
 
 bool haveDisplay = false;
 
-/*
-std::string gst_pipe_in = "rtspsrc location=rtsp://admin:passwd@192.168.1.30:554/cam/realmonitor?channel=1&subtype=0 ! rtph264depay ! h264parse ! v4l2h264dec ! autovideoconvert ! appsink"; cv::VideoCapture capture(gst_pipe_in,cv::CAP_GSTREAMER);
-
-The VideoWriter Gstreamer pipe for writing the processed video to a file:
-
-std::string motion_writer_pipe = "appsrc ! autovideoconvert ! v4l2h264enc ! h264parse ! mp4mux ! filesink location = " + savedMotionVideoFullPath; cv::VideoWriter motion_writer = cv::VideoWriter(motion_writer_pipe,cv::CAP_GSTREAMER,frames_per_second,frame_size,true);
-*/
-
 MessageQueue<unique_ptr<Mat>> RTSPServerClass::input_queue = MessageQueue<unique_ptr<Mat>>();
 unique_ptr<Mat> RTSPServerClass::_current_frame = nullptr;
-//MatSize RTSPServerClass::_size = MatSize(0);
+int RTSPServerClass::avgframecycle = 0;
+int RTSPServerClass::rtsp_frames = 0;
 
 int main(int argc, char *argv[])
 {
@@ -50,7 +43,6 @@ int main(int argc, char *argv[])
   //string PathToModel = "../ssd_mobilenet_v2";
   string PathToModel = "../lite-model_ssd_mobilenet_v1_1_metadata_2.tflite";
 
-  //const string RTSP_URL = "rtsp://192.168.0.49:554/ch0_1.h264";
   string Cam_URL = "rtspsrc location=rtsp://192.168.0.49:554/ch0_1.h264 ! rtph264depay ! h264parse ! omxh264dec ! videoconvert ! appsink drop=true max-buffers=2";
 
   float scale_factor = 1.0;
@@ -58,10 +50,12 @@ int main(int argc, char *argv[])
 
   float detection_threshold = 0.5; //minimum confidence to process a detection
   float boxwidth_threshold = 0.5;  //maximum size of boxes to filter out huge boundinb boxes
+  float overlap_threshold = 0.7; //overlap threshold to remove detections boxes
   int waitInMainLoop = 200;
 
-  string OutputPipe = "appsrc ! videoconvert ! x264enc tune=zerolatency speed-preset=ultrafast key-int-max=2 ! h264parse ! rtph264pay config-interval=5 pt=96 ! udpsink host=";
-  int OutputPort = 5000;
+  //string OutputPipe = "appsrc ! videoconvert ! x264enc tune=zerolatency speed-preset=ultrafast key-int-max=2 ! h264parse ! rtph264pay config-interval=5 pt=96 ! udpsink host=";
+  string OutputPipe = "appsrc name=mysrc ! videoconvert ! videorate ! omxh264enc ! video/x-h264,profile=baseline,framerate=30/1 ! rtph264pay name=pay0 pt=96";
+  //int OutputPort = 5000;
   bool sendDetectorFrame = true;
 
   string MQTTuser = "mqtt";
@@ -81,9 +75,10 @@ int main(int argc, char *argv[])
     dest_IP = argv[i++];
     detection_threshold = stof(argv[i++]);
     boxwidth_threshold = stof(argv[i++]);
+    overlap_threshold = stof(argv[i++]);
     waitInMainLoop = stoi(argv[i++]);
     OutputPipe = argv[i++];
-    OutputPort = stoi(argv[i++]);
+    //OutputPort = stoi(argv[i++]);
     sendDetectorFrame = (string(argv[i++]) == "true");
     MQTTuser = argv[i++];
     MQTTpassword = argv[i++];
@@ -96,13 +91,14 @@ int main(int argc, char *argv[])
          << dest_IP << "\n"
          << detection_threshold << "\n"
          << boxwidth_threshold << "\n"
+         << overlap_threshold << "\n"
          << waitInMainLoop << "\n"
          << OutputPipe << "\n"
-         << OutputPort << "\n"
+         //<< OutputPort << "\n"
          << sendDetectorFrame << "\n"
          << MQTTuser << "\n"
          << MQTTpassword << "\n"
-         << "\nParameters are: InstanceName PathToModel CameraURL scale_factor HomeAssistantServerIP detection_threshold boxwidth_threshold  wait_ms_in_Main_Loop OutputPipe OutputPort sendDetectorFrame MQTTuser MQTTpassword" << endl;
+         << "\nParameters are: InstanceName PathToModel CameraURL scale_factor HomeAssistantServerIP detection_threshold boxwidth_threshold  overlap_threshold wait_ms_in_Main_Loop OutputPipe sendDetectorFrame MQTTuser MQTTpassword" << endl;
 
   //cout << cv::getBuildInformation();
   //return 0;
@@ -198,16 +194,12 @@ int main(int argc, char *argv[])
   VideoReader Reader(Cam_URL, scale_factor);
   Reader.StartGrabberThread();
 
-  RTSPServerClass RTSPServer("");
+  RTSPServerClass RTSPServer(OutputPipe);
 
-
-  //dest_IP = "192.168.0.26";
   //create VideoServer
   /*VideoServerClass VideoServer(dest_IP, OutputPipe, OutputPort);
   if (sendDetectorFrame)
     VideoServer.StartVideoServerThread();
-
-  dest_IP = "192.168.178.36";
   */
   //Class to manage all results incl sending via MQTT
   ResultHandlerClass ResultHandler(dest_IP, sendDetectorFrame, MQTTuser, MQTTpassword, InstanceName);
@@ -245,21 +237,21 @@ int main(int argc, char *argv[])
       DetectionResultClass SessionOutput(TensorProcessor.output_queue.receive());
       cout << "Detection Score of ID 0: " << SessionOutput.GetDetections()[0].score << " for " << SessionOutput.GetDetections()[0].ClassName << " at:(" << SessionOutput.GetDetections()[0].BoxTopLeft.x << "," << SessionOutput.GetDetections()[0].BoxTopLeft.y << "),(" << SessionOutput.GetDetections()[0].BoxBottomRigth.x << "," << SessionOutput.GetDetections()[0].BoxBottomRigth.y << ")\n";
 
-      ResultHandler.ResultHandling(SessionOutput, detection_threshold, boxwidth_threshold);
+      ResultHandler.ResultHandling(SessionOutput, detection_threshold, boxwidth_threshold, overlap_threshold);
       if (sendDetectorFrame)
         RTSPServerClass::input_queue.sendAndClear(move(SessionOutput.MoveImage()));
-        //VideoServer.input_queue.sendAndClear(move(SessionOutput.MoveImage()));
     }
-    //check if frame has not been moved to detector -> send
-    //if (frame.get())
-    //  VideoServer.input_queue.sendAndClear(move(frame));
 
     auto t2 = chrono::high_resolution_clock::now();
     auto ms_int = chrono::duration_cast<chrono::milliseconds>(t2 - t1);
     dur = (dur + ms_int) / 2;
 
-    if (c1 % 20 == 0)
-      cout << "Avergage runtime of Main loop: " << dur.count() << "ms\n";
+    if (c1 % 100 == 0)
+    {
+       cout << "\n---------------------------- \nAvergage runtime of Main loop: " << dur.count() << "ms\n";
+       //cout << "\n---------------------------- \n Avergage call frequency of Main loop: " << dur.count() << "ms\n";
+       cout << "Avergage call frequency after "<< RTSPServerClass::rtsp_frames << " frames of Need Data: " << RTSPServerClass::avgframecycle << "ms\n";
+    }
     c1++;
     waitKey(waitInMainLoop);
   }

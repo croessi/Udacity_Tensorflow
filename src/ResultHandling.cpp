@@ -1,6 +1,6 @@
 #include "ResultHandling.h"
 
-void ResultHandlerClass::ResultHandling(DetectionResultClass &SessionOutput, float display_threshold, float boxwidth_threshold)
+void ResultHandlerClass::ResultHandling(DetectionResultClass &SessionOutput, float display_threshold, float boxwidth_threshold, float overlap_threshold)
 {
     char buffer[100];
     //stringstream RawOutput;
@@ -10,18 +10,56 @@ void ResultHandlerClass::ResultHandling(DetectionResultClass &SessionOutput, flo
     StatisticsClass Statistics;
     int NumObjects = 0;
 
-    for (Detection_t d : SessionOutput.GetDetections())
+    //Loop to filter boxes with too much overlap
+    vector<Detection_t> detections = SessionOutput.GetDetections();
+
+    for (int i = 0; i < detections.size()-1; i++)
+    {
+        detections[i].overlap = -1;
+        for (int h = i+1; h < detections.size(); h++)
+        {
+            if (detections[i].detclass == detections[h].detclass)
+            {
+                int XA1 = detections[i].BoxTopLeft.x;
+                int XA2 = detections[i].BoxBottomRigth.x;
+                int YA1 = detections[i].BoxTopLeft.y;
+                int YA2 = detections[i].BoxBottomRigth.y;
+                int XB1 = detections[h].BoxTopLeft.x;
+                int XB2 = detections[h].BoxBottomRigth.x;
+                int YB1 = detections[h].BoxTopLeft.y;
+                int YB2 = detections[h].BoxBottomRigth.y;
+                int overlap_area = max(0, min(XA2, XB2) - max(XA1, XB1)) * max(0, min(YA2, YB2) - max(YA1, YB1));
+
+                int size_A = (XA2 - XA1) * (YA2 - YA1);
+                int size_B = (XB2 - XB1) * (YB2 - YB1);
+               
+                float overlap_A = overlap_area / size_A;
+                float overlap_B = overlap_area / size_B;
+                detections[i].overlap =overlap_A;
+                detections[h].overlap =overlap_B;
+
+                if (overlap_A > overlap_threshold || overlap_B > overlap_threshold)
+                {
+                    if (detections[i].score > detections[h].score)
+                        detections[h].detclass = -1;
+                    else
+                        detections[i].detclass = -1;
+                }
+            }
+        }
+    }
+
+    for (Detection_t d : detections)
     {
         float boxwidth = (d.BoxBottomRigth.x - d.BoxTopLeft.x) / (float)SessionOutput.GetImage().size[1];
         float boxheight = (d.BoxBottomRigth.y - d.BoxTopLeft.y) / (float)SessionOutput.GetImage().size[0];
 
         float boxcenterX = d.BoxTopLeft.x / (float)SessionOutput.GetImage().size[1] + boxwidth * 0.5;
-
         float boxcenterY = d.BoxTopLeft.y / (float)SessionOutput.GetImage().size[0] + boxheight * 0.5;
 
         //{"Timer1":{"Arm": <status>, "Time": <time>}, "Timer2":{"Arm": <status>, "Time": <time>}}
 
-        if (d.score > display_threshold && boxwidth < boxwidth_threshold)
+        if (d.score > display_threshold && boxwidth < boxwidth_threshold && d.detclass != -1)
         {
             NumObjects++;
             //RawOutput.setf(ios::fixed);
@@ -43,7 +81,7 @@ void ResultHandlerClass::ResultHandling(DetectionResultClass &SessionOutput, flo
 
             Statistics.Stat[d.ClassName]++;
 
-            snprintf(buffer, 100, "%s %d%%", d.ClassName.c_str(), (int)(d.score * 100));
+            snprintf(buffer, 100, "%s %d%% Overlap %d%%", d.ClassName.c_str(), (int)(d.score * 100),(int)(d.overlap * 100));
 
             putText(SessionOutput.GetImage(),
                     buffer,

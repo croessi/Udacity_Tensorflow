@@ -36,6 +36,7 @@ class DetectionResultClass;
 struct Detection_t
 {
   float score;
+  float overlap;
   int detclass;
   Point2d BoxTopLeft;
   Point2d BoxBottomRigth;

@@ -80,7 +80,7 @@ public:
         _cli.publish(msg);
     };
 
-    void ResultHandling(DetectionResultClass &SessionOutput, float display_threshold, float boxwidth_threshold);
+    void ResultHandling(DetectionResultClass &SessionOutput, float display_threshold, float boxwidth_threshold, float overlap_threshold);
 };
 
 #endif

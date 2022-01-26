@@ -38,7 +38,7 @@ private:
     GstRTSPServer *_server;
     GstRTSPMountPoints *_mounts;
     GstRTSPMediaFactory *_factory;
-    string _mountpoint;
+    string _pipe;
     
     thread _RTSPServerThread;
     void StartRTSPServerDummy();
@@ -50,13 +50,16 @@ private:
     static unique_ptr<Mat> _current_frame;
     
 public:
-    RTSPServerClass(string mountpoint) : _mountpoint(mountpoint){};
+    RTSPServerClass(string pipe) : _pipe(pipe){};
     ~RTSPServerClass(){};
 
     void StartRTSPServerThread(MatSize size);
     void StopRTSPServerThread ();
 
     static MessageQueue<unique_ptr<Mat>> input_queue;
+    //statistics
+    static int avgframecycle;
+    static int rtsp_frames;
         //static MatSize _size;
 };
 #endif
