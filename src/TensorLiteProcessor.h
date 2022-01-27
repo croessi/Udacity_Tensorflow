@@ -226,6 +226,8 @@ public:
       if (iter != _detClasses.end())
         Detection.ClassName = iter->second;
 
+      //init overlap
+      Detection.overlap =-1;
       //Detection.ClassName = "top: " + to_string(top) + " left: " + to_string(left) + " bottom: " + to_string(bottom) + " right: " + to_string(right);
 
       //cout << "Box ID " << i << " top: " << top << " left: " << left << " bottom: " << bottom << " right: " << right << endl;
