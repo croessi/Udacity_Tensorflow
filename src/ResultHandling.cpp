@@ -7,7 +7,6 @@ void ResultHandlerClass::ResultHandling(DetectionResultClass &SessionOutput, flo
     stringstream NiceOutput;
     NiceOutput << "{";
 
-    StatisticsClass Statistics;
     int NumObjects = 0;
 
     //Loop to filter boxes with too much overlap
@@ -71,9 +70,9 @@ void ResultHandlerClass::ResultHandling(DetectionResultClass &SessionOutput, flo
             //RawOutput << "Score: " << (int)(d.score * 100) << "% " << d.ClassName << " at: " << setprecision(2) << boxcenterX << ":" << boxcenterY << "\n";
 
             NiceOutput.setf(ios::fixed);
-            if (Statistics.Stat[d.ClassName] > 0)
+            if (SessionOutput.Statistics[d.ClassName] > 0)
             {
-                NiceOutput << "\"" << d.ClassName << "_" << Statistics.Stat[d.ClassName] << "\":\"" << (int)(d.score * 100) << "% "
+                NiceOutput << "\"" << d.ClassName << "_" << SessionOutput.Statistics[d.ClassName] << "\":\"" << (int)(d.score * 100) << "% "
                            << " at:" << setprecision(2) << boxcenterX << ":" << boxcenterY << "\",";
             }
             else
@@ -84,7 +83,7 @@ void ResultHandlerClass::ResultHandling(DetectionResultClass &SessionOutput, flo
 
             rectangle(SessionOutput.GetImage(), d.BoxTopLeft, d.BoxBottomRigth, Scalar(0, 255, 0), 1, 8, 0);
 
-            Statistics.Stat[d.ClassName]++;
+            SessionOutput.Statistics[d.ClassName]++;
 
             snprintf(buffer, 100, "%s %d%% Overlap %d%%", d.ClassName.c_str(), (int)(d.score * 100), (int)(d.overlap * 100));
 
@@ -106,7 +105,7 @@ void ResultHandlerClass::ResultHandling(DetectionResultClass &SessionOutput, flo
     cout << "Detected Objects:\n";
     stringstream StatisticsOutput;
     StatisticsOutput << "{";
-    for (auto const &x : Statistics.Stat)
+    for (auto const &x : SessionOutput.Statistics)
     {
         StatisticsOutput << "\"" << x.first << "\":" << x.second << ",";
         if (x.second > 0)
@@ -122,21 +121,24 @@ void ResultHandlerClass::ResultHandling(DetectionResultClass &SessionOutput, flo
     {
         //cout << "Publishing MQTT Messages!\n";
 
-        mqtt::message_ptr msg;
+        if (detections.size() > 0)
+        {
+            mqtt::message_ptr msg;
 
-        //send available as state
-        msg = mqtt::message::create(_StateTopic, to_string(SessionOutput.runtime));
-        _cli.publish(msg);
+            //send available as state
+            msg = mqtt::message::create(_StateTopic, to_string(SessionOutput.runtime));
+            _cli.publish(msg);
 
-        msg = mqtt::message::create(_AttributeTopic, NiceOutput.str());
-        _cli.publish(msg);
+            msg = mqtt::message::create(_AttributeTopic, NiceOutput.str());
+            _cli.publish(msg);
 
-        //Send statistics
-        msg = mqtt::message::create(_StateTopicStatistics, to_string(NumObjects));
-        _cli.publish(msg);
+            //Send statistics
+            msg = mqtt::message::create(_StateTopicStatistics, to_string(NumObjects));
+            _cli.publish(msg);
 
-        msg = mqtt::message::create(_AttributeTopicStatistics, StatisticsOutput.str());
-        _cli.publish(msg);
+            msg = mqtt::message::create(_AttributeTopicStatistics, StatisticsOutput.str());
+            _cli.publish(msg);
+        }
     }
     else
     {

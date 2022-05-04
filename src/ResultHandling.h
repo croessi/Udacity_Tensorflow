@@ -12,7 +12,6 @@
 #include <string>
 
 #include "TensorLiteProcessor.h"
-#include "Statistics.h"
 
 class ResultHandlerClass
 {
@@ -28,7 +27,7 @@ private:
     const string _InstanceName;
 
 public:
-    ResultHandlerClass(string ServerIP, bool sendDetectorFrame, const string MQTTuser, const string MQTTpassword, const string InstanceName) : _cli(mqtt::client("tcp://" + ServerIP + ":1883", "DetectorPi")),
+    ResultHandlerClass(string ServerIP, bool sendDetectorFrame, const string MQTTuser, const string MQTTpassword, const string InstanceName) : _cli(mqtt::client("tcp://" + ServerIP + ":1883", InstanceName)),
                                                                                                                                                _StateTopic("homeassistant/sensor/" + InstanceName + "/state"),
                                                                                                                                                _AttributeTopic("homeassistant/sensor/" + InstanceName + "/attributes"),
                                                                                                                                                _StateTopicStatistics("homeassistant/sensor/" + InstanceName + "Statistics/state"),

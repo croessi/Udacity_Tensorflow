@@ -66,6 +66,7 @@ public:
   const Mat &GetImage() { return *_image; }
   unique_ptr<Mat> MoveImage() { return move(_image); }
   const vector<Detection_t> &GetDetections() const { return _detections; }
+  map<string, int> Statistics;
   int runtime = 0;
 
   DetectionResultClass(unique_ptr<Mat> Image) : _image(move(Image)){};
@@ -133,7 +134,7 @@ public:
 class DetectorLiteClass
 {
 protected:
-  DetectorLiteClass(string PtoModel) : _pathToModel(PtoModel){};
+  DetectorLiteClass(string PtoModel,string PathToLabelMap) : _pathToModel(PtoModel), _PathToLabelMap(PathToLabelMap){};
 
 public:
   DetectorLiteClass() = delete;
@@ -144,6 +145,7 @@ public:
   virtual void ProcessResults(unique_ptr<tflite::Interpreter> &Interpreter, DetectionResultClass &SessionResult) = 0;
 
   const string _pathToModel;
+  const string _PathToLabelMap;
 
   //vector<TensorDescription> &GetOutputTensorDescriptions() { return _outputTensorDescriptions; }
   //const TensorDescription &GetInputTensorDescription() { return _inputTensorDescription; }
@@ -165,10 +167,9 @@ protected:
 class MobilenetV1Class : public DetectorLiteClass
 {
 public:
-  MobilenetV1Class(string &PathToModel) : DetectorLiteClass(PathToModel)
+  MobilenetV1Class(string &PathToModel, string &PathToLabelMap) : DetectorLiteClass(PathToModel, PathToLabelMap)
   {
-    string filename = "../labelmap.txt";
-    _detClasses = ReadClasses2LabelsSSDV1(filename);
+    _detClasses = ReadClasses2LabelsSSDV1(PathToLabelMap);
   }
 
   ~MobilenetV1Class(){};
@@ -200,6 +201,10 @@ public:
     //decode detection
     int num_detections = Interpreter->typed_output_tensor<float>(3)[0];
     cout << "Decoding " << num_detections << " detections." << endl;
+
+    //prepare statitics map
+    for (auto const& x : _detClasses)
+      SessionResult.Statistics.emplace(x.second,0);
 
     for (int i = 0; i < num_detections; i++)
     {
@@ -243,7 +248,7 @@ private:
 class TensorLiteProcessorClass
 {
 public:
-  TensorLiteProcessorClass(shared_ptr<DetectorLiteClass> Detector);
+  TensorLiteProcessorClass(shared_ptr<DetectorLiteClass> Detector, int NumThreads, bool Allow16bitPrecisison);
   ~TensorLiteProcessorClass();
 
   void StartProcessorThread();
@@ -257,6 +262,8 @@ public:
 private:
   shared_ptr<DetectorLiteClass> _detector;
   thread _detectorThread;
+  int _NumThreads;
+   bool _Allow16bitPrecisison;
 
   std::unique_ptr<tflite::Interpreter> _interpreter;
 };

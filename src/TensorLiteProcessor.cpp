@@ -31,7 +31,7 @@ void TensorLiteProcessorClass::StopProcessorThread()
   _detectorThread.join();
 }
 
-TensorLiteProcessorClass::TensorLiteProcessorClass(shared_ptr<DetectorLiteClass> Detector) : _detector(Detector)
+TensorLiteProcessorClass::TensorLiteProcessorClass(shared_ptr<DetectorLiteClass> Detector, int NumThreads, bool Allow16bitPrecisison) : _detector(Detector),_NumThreads(NumThreads),_Allow16bitPrecisison(Allow16bitPrecisison)
 {
 }
 
@@ -84,8 +84,8 @@ void TensorLiteProcessorClass::SessionRunLoop()
   }
   printf("AllocateTensors Ok\n");
 
-  _interpreter->SetNumThreads(4);
-  //_interpreter->SetAllowFp16PrecisionForFp32(true);
+  _interpreter->SetNumThreads(_NumThreads);
+  _interpreter->SetAllowFp16PrecisionForFp32(_Allow16bitPrecisison);
 
   while (true)
   {

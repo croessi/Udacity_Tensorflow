@@ -42,6 +42,10 @@ int main(int argc, char *argv[])
   string InstanceName = "DetectorPi_Guard";
   //string PathToModel = "../ssd_mobilenet_v2";
   string PathToModel = "../lite-model_ssd_mobilenet_v1_1_metadata_2.tflite";
+  string PathToLabelmap = "../labelmap.txt";
+
+  int numThreads = 2;
+  bool allow16Bitprec = true;
 
   string Cam_URL = "rtspsrc location=rtsp://192.168.0.49:554/ch0_1.h264 ! rtph264depay ! h264parse ! omxh264dec ! videoconvert ! appsink drop=true max-buffers=2";
 
@@ -50,7 +54,7 @@ int main(int argc, char *argv[])
 
   float detection_threshold = 0.5; //minimum confidence to process a detection
   float boxwidth_threshold = 0.5;  //maximum size of boxes to filter out huge boundinb boxes
-  float overlap_threshold = 0.7; //overlap threshold to remove detections boxes
+  float overlap_threshold = 0.7;   //overlap threshold to remove detections boxes
   int waitInMainLoop = 200;
 
   //string OutputPipe = "appsrc ! videoconvert ! x264enc tune=zerolatency speed-preset=ultrafast key-int-max=2 ! h264parse ! rtph264pay config-interval=5 pt=96 ! udpsink host=";
@@ -70,7 +74,9 @@ int main(int argc, char *argv[])
     int i = 1;
     InstanceName = argv[i++];
     PathToModel = argv[i++];
-    Cam_URL = argv[i++];
+    PathToLabelmap = argv[i++];
+    numThreads = stoi(argv[i++]);
+    allow16Bitprec = (string(argv[i++]) == "true");
     scale_factor = stof(argv[i++]);
     dest_IP = argv[i++];
     detection_threshold = stof(argv[i++]);
@@ -82,11 +88,14 @@ int main(int argc, char *argv[])
     sendDetectorFrame = (string(argv[i++]) == "true");
     MQTTuser = argv[i++];
     MQTTpassword = argv[i++];
+    Cam_URL = argv[i++];
   }
   else
     cout << "Not enough arguments provided. Using standard values: " << InstanceName << "\n"
          << PathToModel << "\n"
-         << Cam_URL << "\n"
+         << PathToLabelmap << "\n"
+         << numThreads << "\n"
+         << allow16Bitprec << "\n"
          << scale_factor << "\n"
          << dest_IP << "\n"
          << detection_threshold << "\n"
@@ -98,7 +107,8 @@ int main(int argc, char *argv[])
          << sendDetectorFrame << "\n"
          << MQTTuser << "\n"
          << MQTTpassword << "\n"
-         << "\nParameters are: InstanceName PathToModel CameraURL scale_factor HomeAssistantServerIP detection_threshold boxwidth_threshold  overlap_threshold wait_ms_in_Main_Loop OutputPipe sendDetectorFrame MQTTuser MQTTpassword" << endl;
+         << Cam_URL << "\n"
+         << "\nParameters are: InstanceName PathToModel PathToLabelmap numThreads allow16Bitprec scale_factor HomeAssistantServerIP detection_threshold boxwidth_threshold  overlap_threshold wait_ms_in_Main_Loop OutputPipe sendDetectorFrame MQTTuser MQTTpassword CameraURL" << endl;
 
   //cout << cv::getBuildInformation();
   //return 0;
@@ -185,7 +195,7 @@ int main(int argc, char *argv[])
 
   //get Detector Objet from thread
   //shared_ptr<MobilenetV2Class> MobilenetV2 = make_shared<MobilenetV2Class>(PathToModel);
-  shared_ptr<MobilenetV1Class> MobilenetV1 = make_shared<MobilenetV1Class>(PathToModel);
+  shared_ptr<MobilenetV1Class> MobilenetV1 = make_shared<MobilenetV1Class>(PathToModel, PathToLabelmap);
 
   //String PathToModel = "../SSDMobilenetOpenImages4";
   //shared_ptr<MobilenetV2_OIv4Class> MobilenetV2 = make_shared<MobilenetV2_OIv4Class>(PathToModel);
@@ -204,14 +214,13 @@ int main(int argc, char *argv[])
   //Class to manage all results incl sending via MQTT
   ResultHandlerClass ResultHandler(dest_IP, sendDetectorFrame, MQTTuser, MQTTpassword, InstanceName);
 
-
   //give thread som tme to instanciate
   //std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
   //load Model into processor & start detector thread
   //TensorProcessorClass TensorProcessor(MobilenetV2);
   //TensorProcessor.StartProcessorThread();
-  TensorLiteProcessorClass TensorProcessor(MobilenetV1);
+  TensorLiteProcessorClass TensorProcessor(MobilenetV1, numThreads, allow16Bitprec);
   TensorProcessor.StartProcessorThread();
 
   //counter for average runtime of main loop
@@ -228,7 +237,7 @@ int main(int argc, char *argv[])
     if (c1 == 0)
     {
       RTSPServer.StartRTSPServerThread(frame->size);
-      TensorProcessor.input_queue.sendAndClear(move(frame));  
+      TensorProcessor.input_queue.sendAndClear(move(frame));
     }
 
     if (TensorProcessor.output_queue.GetSize() > 0 && c1)
@@ -248,9 +257,9 @@ int main(int argc, char *argv[])
 
     if (c1 % 100 == 0)
     {
-       cout << "\n---------------------------- \nAvergage runtime of Main loop: " << dur.count() << "ms\n";
-       //cout << "\n---------------------------- \n Avergage call frequency of Main loop: " << dur.count() << "ms\n";
-       cout << "Avergage call frequency after "<< RTSPServerClass::rtsp_frames << " frames of Need Data: " << RTSPServerClass::avgframecycle << "ms\n";
+      cout << "\n---------------------------- \nAvergage runtime of Main loop: " << dur.count() << "ms\n";
+      //cout << "\n---------------------------- \n Avergage call frequency of Main loop: " << dur.count() << "ms\n";
+      cout << "Avergage call frequency after " << RTSPServerClass::rtsp_frames << " frames of Need Data: " << RTSPServerClass::avgframecycle << "ms\n";
     }
     c1++;
     waitKey(waitInMainLoop);

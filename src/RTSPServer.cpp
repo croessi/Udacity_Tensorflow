@@ -56,6 +56,7 @@ void RTSPServerClass::RTSP_need_data(GstElement *appsrc, guint unused, MyContext
 
   if (input_queue.GetSize() > 0)
   {
+    cout << "ReceiveFrame" << endl;
     _current_frame = RTSPServerClass::input_queue.receive();
     // cout << "-------------------------------------------received Frame with size: " << _current_frame->size[1] << "x" << _current_frame->size[0] << endl;
     //append rows if g_height is bigger due to macroblock fitting
@@ -80,8 +81,10 @@ void RTSPServerClass::RTSP_need_data(GstElement *appsrc, guint unused, MyContext
   GST_BUFFER_DURATION(buffer) = gst_util_uint64_scale_int(1, GST_SECOND, 2);
   ctx->timestamp += GST_BUFFER_DURATION(buffer);
 
+   cout << "pushing buffer" << endl;
   g_signal_emit_by_name(appsrc, "push-buffer", buffer, &ret);
   gst_buffer_unref(buffer);
+     cout << "done" << endl;
 }
 
 /* called when a new media pipeline is constructed. We can query the
